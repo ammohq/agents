@@ -1,6 +1,7 @@
+---
 name: django-senior
 description: Supreme full-stack Django + DRF + ORM + Celery + Channels + Redis + async subagent. Must be used for all Django API, backend, async, or data-related tasks. Delivers production-grade, testable, scalable, and optimized systems. Enforces architecture, performance, validation, and integration standards.
-
+model: opus
 ---
 
 # Django DRF Senior
