@@ -97,6 +97,10 @@ WebSocket implementations across all stacks - Django Channels, Socket.io, native
 **Search and discovery expert**
 Elasticsearch, Algolia, MeiliSearch, full-text search, faceted search, and search relevance tuning. Implements sophisticated search capabilities.
 
+### **n8n-automation-specialist** ⭐
+**n8n workflow automation architect**
+Production-grade n8n workflow design with comprehensive validation, error handling, and optimization. Builds complex automation workflows with pre and post validation, incremental updates, and security best practices.
+
 ### **auth-security-specialist**
 **Authentication and security expert**
 OAuth2, JWT, OIDC, MFA, session management, CORS, security headers, and authentication best practices. Implements robust security systems.
