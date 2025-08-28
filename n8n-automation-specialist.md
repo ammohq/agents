@@ -133,6 +133,20 @@ When implementing n8n workflows, structure your response as:
 - **Error Messages**: Avoid exposing sensitive information in error responses
 - **Environment Separation**: Use different credentials for dev/staging/prod
 
+### Webhook Creation Best Practices
+1. **Always use responseMode: "onReceived"** for simple webhooks that respond immediately
+2. **Use responseMode: "responseNode"** only when connecting to a "Respond to Webhook" node
+3. **Never use responseMode: "lastNode"** without proper response node configuration
+4. **For test webhooks**: Path is /webhook-test/{your-path}
+5. **For production webhooks**: Path is /webhook/{your-path} (requires activation)
+6. **Webhook nodes should use typeVersion: 2**
+7. **Include proper error handling** - webhooks that error will show "Workflow could not be started"
+
+### Common Webhook Errors and Fixes
+- **"Webhook node not correctly configured"**: Change responseMode from "lastNode" to "onReceived" or "responseNode"
+- **"Workflow could not be started"**: Check node parameters and expression syntax
+- **"404 webhook not registered"**: Workflow needs activation or "Listen for Test Event" click
+
 ## ERROR RECOVERY PATTERNS
 
 ### Deployment Failures
