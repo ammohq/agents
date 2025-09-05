@@ -1046,6 +1046,722 @@ class WebSocketMonitor {
 }
 ```
 
+## PRODUCTION EXAMPLES
+
+### Real-time Dashboard with Live Metrics
+```python
+# models.py
+class MetricSnapshot(BaseModel):
+    metric_type = models.CharField(max_length=50)
+    value = models.DecimalField(max_digits=15, decimal_places=2)
+    tags = models.JSONField(default=dict)
+    timestamp = models.DateTimeField(db_index=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['metric_type', '-timestamp']),
+            models.Index(fields=['timestamp']),
+        ]
+
+# consumers.py
+class DashboardConsumer(AsyncJsonWebsocketConsumer):
+    async def connect(self):
+        if not self.scope['user'].is_authenticated:
+            await self.close(code=4001)
+            return
+        
+        # Check dashboard access permissions
+        dashboard_id = self.scope['url_route']['kwargs']['dashboard_id']
+        if not await self.has_dashboard_access(dashboard_id):
+            await self.close(code=4003)
+            return
+        
+        self.dashboard_id = dashboard_id
+        self.group_name = f'dashboard_{dashboard_id}'
+        
+        # Join dashboard group
+        await self.channel_layer.group_add(
+            self.group_name, self.channel_name
+        )
+        await self.accept()
+        
+        # Send current metrics
+        await self.send_current_metrics()
+    
+    async def disconnect(self, close_code):
+        if hasattr(self, 'group_name'):
+            await self.channel_layer.group_discard(
+                self.group_name, self.channel_name
+            )
+    
+    async def receive_json(self, content):
+        message_type = content.get('type')
+        
+        if message_type == 'subscribe_metric':
+            await self.handle_metric_subscription(content.get('metric_type'))
+        elif message_type == 'unsubscribe_metric':
+            await self.handle_metric_unsubscription(content.get('metric_type'))
+        elif message_type == 'request_historical':
+            await self.send_historical_data(content)
+    
+    async def send_current_metrics(self):
+        """Send current metrics snapshot"""
+        metrics = await self.get_current_metrics()
+        await self.send_json({
+            'type': 'metrics_snapshot',
+            'metrics': metrics,
+            'timestamp': timezone.now().isoformat()
+        })
+    
+    async def metric_update(self, event):
+        """Handle metric updates from channel layer"""
+        await self.send_json({
+            'type': 'metric_update',
+            'metric_type': event['metric_type'],
+            'value': event['value'],
+            'change': event.get('change'),
+            'timestamp': event['timestamp']
+        })
+    
+    @database_sync_to_async
+    def has_dashboard_access(self, dashboard_id):
+        return Dashboard.objects.filter(
+            id=dashboard_id,
+            team__members=self.scope['user']
+        ).exists()
+    
+    @database_sync_to_async
+    def get_current_metrics(self):
+        # Get latest metrics for dashboard
+        latest_metrics = MetricSnapshot.objects.filter(
+            dashboard_id=self.dashboard_id
+        ).order_by('metric_type', '-timestamp').distinct('metric_type')
+        
+        return [
+            {
+                'type': m.metric_type,
+                'value': float(m.value),
+                'timestamp': m.timestamp.isoformat(),
+                'tags': m.tags
+            } for m in latest_metrics
+        ]
+
+# Celery task to broadcast metric updates
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
+@shared_task
+def broadcast_metric_update(dashboard_id, metric_type, value, previous_value=None):
+    channel_layer = get_channel_layer()
+    
+    # Calculate change percentage
+    change = None
+    if previous_value and previous_value != 0:
+        change = ((value - previous_value) / previous_value) * 100
+    
+    # Broadcast to all connected clients
+    async_to_sync(channel_layer.group_send)(
+        f'dashboard_{dashboard_id}',
+        {
+            'type': 'metric_update',
+            'metric_type': metric_type,
+            'value': value,
+            'change': change,
+            'timestamp': timezone.now().isoformat()
+        }
+    )
+
+# React Dashboard Component
+import { useWebSocket } from './hooks/useWebSocket';
+import { Line } from 'react-chartjs-2';
+
+const DashboardComponent = ({ dashboardId }) => {
+  const [metrics, setMetrics] = useState({});
+  const [chartData, setChartData] = useState({});
+  const [alerts, setAlerts] = useState([]);
+  
+  const { isConnected, lastMessage, sendMessage } = useWebSocket({
+    url: `ws://localhost:8000/ws/dashboard/${dashboardId}/`,
+    onMessage: (data) => {
+      switch (data.type) {
+        case 'metrics_snapshot':
+          handleMetricsSnapshot(data.metrics);
+          break;
+        case 'metric_update':
+          handleMetricUpdate(data);
+          break;
+        case 'alert':
+          handleAlert(data);
+          break;
+      }
+    },
+  });
+  
+  const handleMetricsSnapshot = (metricsData) => {
+    const metricsMap = {};
+    metricsData.forEach(metric => {
+      metricsMap[metric.type] = metric;
+    });
+    setMetrics(metricsMap);
+    
+    // Initialize chart data
+    initializeChartData(metricsData);
+  };
+  
+  const handleMetricUpdate = (data) => {
+    setMetrics(prev => ({
+      ...prev,
+      [data.metric_type]: {
+        ...prev[data.metric_type],
+        value: data.value,
+        change: data.change,
+        timestamp: data.timestamp
+      }
+    }));
+    
+    // Update chart data
+    updateChartData(data.metric_type, data.value, data.timestamp);
+    
+    // Check for alerts
+    checkMetricAlert(data);
+  };
+  
+  const checkMetricAlert = (data) => {
+    // Example: Alert if CPU usage > 80%
+    if (data.metric_type === 'cpu_usage' && data.value > 80) {
+      setAlerts(prev => [...prev, {
+        id: Date.now(),
+        type: 'warning',
+        message: `High CPU usage: ${data.value.toFixed(1)}%`,
+        timestamp: data.timestamp
+      }]);
+    }
+  };
+  
+  const subscribeToMetric = (metricType) => {
+    sendMessage({
+      type: 'subscribe_metric',
+      metric_type: metricType
+    });
+  };
+  
+  const requestHistorical = (metricType, timeRange) => {
+    sendMessage({
+      type: 'request_historical',
+      metric_type: metricType,
+      time_range: timeRange
+    });
+  };
+  
+  return (
+    <div className="dashboard">
+      <div className="connection-status">
+        <span className={`status ${isConnected ? 'connected' : 'disconnected'}`}>
+          {isConnected ? '🟢 Live' : '🔴 Disconnected'}
+        </span>
+      </div>
+      
+      <div className="metrics-grid">
+        {Object.entries(metrics).map(([type, metric]) => (
+          <MetricCard 
+            key={type} 
+            type={type} 
+            metric={metric}
+            onSubscribe={() => subscribeToMetric(type)}
+          />
+        ))}
+      </div>
+      
+      <div className="charts">
+        {Object.entries(chartData).map(([type, data]) => (
+          <div key={type} className="chart-container">
+            <h3>{type.replace('_', ' ').toUpperCase()}</h3>
+            <Line data={data} options={chartOptions} />
+          </div>
+        ))}
+      </div>
+      
+      <AlertPanel alerts={alerts} onDismiss={(id) => 
+        setAlerts(prev => prev.filter(a => a.id !== id))
+      } />
+    </div>
+  );
+};
+```
+
+### Multi-Player Game State Synchronization
+```python
+# Game models
+class GameSession(BaseModel):
+    code = models.CharField(max_length=6, unique=True)
+    max_players = models.IntegerField(default=4)
+    status = models.CharField(max_length=20, choices=[
+        ('waiting', 'Waiting'),
+        ('active', 'Active'),
+        ('finished', 'Finished')
+    ])
+    game_data = models.JSONField(default=dict)
+    
+class Player(BaseModel):
+    session = models.ForeignKey(GameSession, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    nickname = models.CharField(max_length=50)
+    position = models.JSONField(default=dict)  # x, y coordinates
+    score = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+# Game Consumer with state synchronization
+class GameConsumer(AsyncJsonWebsocketConsumer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.game_code = None
+        self.player_id = None
+        self.position_lock = asyncio.Lock()
+    
+    async def connect(self):
+        self.game_code = self.scope['url_route']['kwargs']['game_code']
+        self.user = self.scope['user']
+        
+        if not await self.can_join_game():
+            await self.close(code=4004)
+            return
+        
+        # Create or get player
+        self.player = await self.get_or_create_player()
+        self.player_id = self.player.id
+        
+        # Join game group
+        await self.channel_layer.group_add(
+            f'game_{self.game_code}',
+            self.channel_name
+        )
+        
+        await self.accept()
+        
+        # Send game state
+        await self.send_game_state()
+        
+        # Notify others of player join
+        await self.broadcast_player_joined()
+    
+    async def receive_json(self, content):
+        action = content.get('action')
+        
+        handlers = {
+            'move': self.handle_move,
+            'action': self.handle_game_action,
+            'chat': self.handle_chat_message,
+            'ready': self.handle_player_ready,
+        }
+        
+        handler = handlers.get(action)
+        if handler:
+            await handler(content)
+    
+    async def handle_move(self, content):
+        """Handle player movement with conflict resolution"""
+        async with self.position_lock:
+            new_position = content.get('position', {})
+            
+            # Validate position (bounds checking, collision detection)
+            if not await self.is_valid_position(new_position):
+                await self.send_json({
+                    'type': 'error',
+                    'message': 'Invalid position'
+                })
+                return
+            
+            # Update player position
+            await self.update_player_position(new_position)
+            
+            # Broadcast to other players
+            await self.channel_layer.group_send(
+                f'game_{self.game_code}',
+                {
+                    'type': 'player_moved',
+                    'player_id': str(self.player_id),
+                    'position': new_position,
+                    'timestamp': timezone.now().isoformat()
+                }
+            )
+    
+    async def handle_game_action(self, content):
+        """Handle game-specific actions"""
+        action_type = content.get('type')
+        
+        if action_type == 'collect_item':
+            item_id = content.get('item_id')
+            success = await self.collect_item(item_id)
+            
+            if success:
+                # Update player score
+                await self.update_player_score(10)
+                
+                # Remove item from game state
+                await self.remove_item_from_game(item_id)
+                
+                # Broadcast item collected
+                await self.channel_layer.group_send(
+                    f'game_{self.game_code}',
+                    {
+                        'type': 'item_collected',
+                        'player_id': str(self.player_id),
+                        'item_id': item_id,
+                        'score': await self.get_player_score()
+                    }
+                )
+    
+    # Channel layer event handlers
+    async def player_moved(self, event):
+        if event['player_id'] != str(self.player_id):  # Don't echo back
+            await self.send_json({
+                'type': 'player_move',
+                'player_id': event['player_id'],
+                'position': event['position'],
+                'timestamp': event['timestamp']
+            })
+    
+    async def item_collected(self, event):
+        await self.send_json({
+            'type': 'item_collected',
+            'player_id': event['player_id'],
+            'item_id': event['item_id'],
+            'score': event['score']
+        })
+    
+    async def game_state_changed(self, event):
+        await self.send_json({
+            'type': 'game_state',
+            'state': event['state']
+        })
+    
+    @database_sync_to_async
+    def can_join_game(self):
+        return GameSession.objects.filter(
+            code=self.game_code,
+            status__in=['waiting', 'active'],
+            players__count__lt=F('max_players')
+        ).exists()
+    
+    @database_sync_to_async
+    def get_or_create_player(self):
+        player, created = Player.objects.get_or_create(
+            session__code=self.game_code,
+            user=self.user,
+            defaults={'nickname': self.user.username}
+        )
+        return player
+
+# React Game Component
+const GameComponent = ({ gameCode }) => {
+  const [gameState, setGameState] = useState(null);
+  const [players, setPlayers] = useState({});
+  const [myPosition, setMyPosition] = useState({ x: 0, y: 0 });
+  const [items, setItems] = useState([]);
+  
+  const { isConnected, sendMessage } = useWebSocket({
+    url: `ws://localhost:8000/ws/game/${gameCode}/`,
+    onMessage: handleGameMessage,
+  });
+  
+  const handleGameMessage = (data) => {
+    switch (data.type) {
+      case 'game_state':
+        setGameState(data.state);
+        setPlayers(data.players);
+        setItems(data.items);
+        break;
+      
+      case 'player_move':
+        setPlayers(prev => ({
+          ...prev,
+          [data.player_id]: {
+            ...prev[data.player_id],
+            position: data.position
+          }
+        }));
+        break;
+      
+      case 'item_collected':
+        setItems(prev => prev.filter(item => item.id !== data.item_id));
+        setPlayers(prev => ({
+          ...prev,
+          [data.player_id]: {
+            ...prev[data.player_id],
+            score: data.score
+          }
+        }));
+        break;
+    }
+  };
+  
+  // Movement with throttling
+  const movePlayer = useCallback(
+    throttle((newPosition) => {
+      sendMessage({
+        action: 'move',
+        position: newPosition
+      });
+      setMyPosition(newPosition);
+    }, 50), // 50ms throttle
+    [sendMessage]
+  );
+  
+  // Keyboard movement
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      const speed = 5;
+      let newPosition = { ...myPosition };
+      
+      switch (e.key) {
+        case 'ArrowUp':
+          newPosition.y -= speed;
+          break;
+        case 'ArrowDown':
+          newPosition.y += speed;
+          break;
+        case 'ArrowLeft':
+          newPosition.x -= speed;
+          break;
+        case 'ArrowRight':
+          newPosition.x += speed;
+          break;
+        default:
+          return;
+      }
+      
+      movePlayer(newPosition);
+    };
+    
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [myPosition, movePlayer]);
+  
+  const collectItem = (itemId) => {
+    sendMessage({
+      action: 'action',
+      type: 'collect_item',
+      item_id: itemId
+    });
+  };
+  
+  return (
+    <div className="game-container">
+      <GameCanvas
+        players={players}
+        items={items}
+        onItemClick={collectItem}
+      />
+      <ScoreBoard players={Object.values(players)} />
+      <ConnectionIndicator connected={isConnected} />
+    </div>
+  );
+};
+```
+
+### Collaborative Document Editing
+```javascript
+// Operational Transformation for collaborative editing
+class DocumentCollaboration {
+  constructor(documentId, websocketUrl) {
+    this.documentId = documentId;
+    this.content = '';
+    this.version = 0;
+    this.pendingOps = [];
+    
+    this.ws = new WebSocket(websocketUrl);
+    this.setupWebSocket();
+  }
+  
+  setupWebSocket() {
+    this.ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      
+      switch (data.type) {
+        case 'document_state':
+          this.content = data.content;
+          this.version = data.version;
+          break;
+        
+        case 'operation':
+          this.handleRemoteOperation(data.operation);
+          break;
+        
+        case 'operation_ack':
+          this.handleOperationAck(data.operationId);
+          break;
+        
+        case 'user_cursor':
+          this.handleUserCursor(data.userId, data.position);
+          break;
+      }
+    };
+  }
+  
+  // Apply local edit and send to server
+  applyEdit(operation) {
+    const localOp = {
+      id: this.generateOperationId(),
+      type: operation.type,
+      position: operation.position,
+      content: operation.content,
+      version: this.version,
+      authorId: this.userId
+    };
+    
+    // Apply locally
+    this.content = this.applyOperation(this.content, localOp);
+    this.version++;
+    
+    // Send to server
+    this.ws.send(JSON.stringify({
+      type: 'operation',
+      operation: localOp
+    }));
+    
+    // Track pending operation
+    this.pendingOps.push(localOp);
+  }
+  
+  handleRemoteOperation(remoteOp) {
+    // Transform against pending operations
+    let transformedOp = remoteOp;
+    
+    for (const pendingOp of this.pendingOps) {
+      transformedOp = this.transformOperation(transformedOp, pendingOp);
+    }
+    
+    // Apply transformed operation
+    this.content = this.applyOperation(this.content, transformedOp);
+    this.version++;
+    
+    // Notify editor of change
+    this.onContentChanged?.(this.content, transformedOp);
+  }
+  
+  transformOperation(op1, op2) {
+    // Operational transformation logic
+    if (op1.type === 'insert' && op2.type === 'insert') {
+      if (op1.position <= op2.position) {
+        return { ...op1, position: op1.position + op2.content.length };
+      }
+    } else if (op1.type === 'delete' && op2.type === 'insert') {
+      if (op2.position <= op1.position) {
+        return { ...op1, position: op1.position + op2.content.length };
+      }
+    } else if (op1.type === 'insert' && op2.type === 'delete') {
+      if (op1.position < op2.position) {
+        return { ...op2, position: op2.position + op1.content.length };
+      } else if (op1.position >= op2.position + op2.length) {
+        return { ...op1, position: op1.position - op2.length };
+      }
+    }
+    
+    return op1;
+  }
+  
+  applyOperation(content, operation) {
+    switch (operation.type) {
+      case 'insert':
+        return content.slice(0, operation.position) + 
+               operation.content + 
+               content.slice(operation.position);
+      
+      case 'delete':
+        return content.slice(0, operation.position) + 
+               content.slice(operation.position + operation.length);
+      
+      default:
+        return content;
+    }
+  }
+  
+  // Send cursor position for collaborative editing
+  updateCursor(position) {
+    this.ws.send(JSON.stringify({
+      type: 'cursor_position',
+      position: position,
+      userId: this.userId
+    }));
+  }
+}
+
+// React collaborative editor component
+const CollaborativeEditor = ({ documentId }) => {
+  const [content, setContent] = useState('');
+  const [cursors, setCursors] = useState({});
+  const [collaborators, setCollaborators] = useState([]);
+  const editorRef = useRef();
+  const collaborationRef = useRef();
+  
+  useEffect(() => {
+    const collaboration = new DocumentCollaboration(
+      documentId,
+      `ws://localhost:8000/ws/document/${documentId}/`
+    );
+    
+    collaboration.onContentChanged = (newContent, operation) => {
+      setContent(newContent);
+      
+      // Update editor without triggering onChange
+      if (editorRef.current && !operation.isLocal) {
+        editorRef.current.setValue(newContent);
+      }
+    };
+    
+    collaboration.onCursorUpdate = (userId, position) => {
+      setCursors(prev => ({ ...prev, [userId]: position }));
+    };
+    
+    collaborationRef.current = collaboration;
+    
+    return () => {
+      collaboration.disconnect();
+    };
+  }, [documentId]);
+  
+  const handleContentChange = (newContent) => {
+    const oldContent = content;
+    const changes = diffStrings(oldContent, newContent);
+    
+    changes.forEach(change => {
+      if (change.type === 'insert') {
+        collaborationRef.current?.applyEdit({
+          type: 'insert',
+          position: change.position,
+          content: change.text
+        });
+      } else if (change.type === 'delete') {
+        collaborationRef.current?.applyEdit({
+          type: 'delete',
+          position: change.position,
+          length: change.length
+        });
+      }
+    });
+    
+    setContent(newContent);
+  };
+  
+  const handleCursorChange = (position) => {
+    collaborationRef.current?.updateCursor(position);
+  };
+  
+  return (
+    <div className="collaborative-editor">
+      <CollaboratorList users={collaborators} />
+      <CodeEditor
+        ref={editorRef}
+        value={content}
+        onChange={handleContentChange}
+        onCursorPositionChange={handleCursorChange}
+        cursors={cursors}
+      />
+    </div>
+  );
+};
+```
+
 ## BEST PRACTICES
 
 1. **Connection Management**

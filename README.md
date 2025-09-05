@@ -42,8 +42,32 @@ Improves code structure and design while preserving behavior through systematic,
 ## 🏗️ Backend & Data Specialists
 
 ### **django-specialist** ⭐
-**Supreme Django + DRF + ORM expert**
-Production-grade Django applications with comprehensive async and real-time capabilities. Must be used for all Django API, backend, async, or data-related tasks.
+**Supreme Django + DRF + ORM + Pillow expert**
+Production-grade Django applications with comprehensive DRF patterns, async capabilities, advanced admin features, and full Pillow integration for image processing. Must be used for all Django API, backend, async, or data-related tasks. Includes enterprise ViewSets, serializers, permissions, and image optimization.
+
+### **django-admin-specialist** 
+**Advanced Django Admin customization expert**
+Comprehensive Django admin patterns including raw_id_fields, autocomplete_fields, performance optimizations, custom actions, and full Pillow integration for image management. Expert in admin UI/UX, bulk operations, and advanced filtering.
+
+### **django-unfold-admin-specialist** ⭐
+**Ultimate Django Unfold admin interface expert**
+Master of Django Unfold's modern Tailwind-powered admin with dynamic navigation, conditional fields, custom dashboards, and rich components. Creates beautiful, production-ready admin interfaces with advanced UX patterns.
+
+### **celery-specialist**
+**Django + Celery integration master**
+Expert in Celery task patterns, Beat scheduling, django-celery-beat, idempotency, retries, error handling, and monitoring. Includes image processing tasks and async workflows.
+
+### **redis-specialist**
+**Django + Redis caching and data structures expert**
+Advanced Redis patterns with django-redis, pub/sub, distributed locks, rate limiting, session storage, and cache optimization strategies. Integrates seamlessly with Django applications.
+
+### **file-storage-specialist**
+**Cloud storage and Pillow processing expert**
+S3/Azure/GCS backends, CDN integration, image processing pipelines with Pillow, WebP conversion, thumbnail generation, and optimized storage strategies. Production-ready file management.
+
+### **monitoring-specialist**
+**Application monitoring and observability expert**
+Sentry integration, Prometheus metrics, structured logging, health checks, performance monitoring, and alerting. Comprehensive production monitoring setup.
 
 ### **full-stack-coder**
 **Complete application builder**
@@ -140,6 +164,10 @@ API documentation, README files, architecture docs, user guides, and technical w
 - **Performance problems**: `performance-analyzer`  
 - **UI/UX issues**: `ux-specialist` or `frontend-specialist`
 - **Django/API problems**: `django-specialist`
+- **Admin interface issues**: `django-admin-specialist` or `django-unfold-admin-specialist`
+- **Image processing problems**: `file-storage-specialist` (Pillow integration)
+- **Async task issues**: `celery-specialist`
+- **Caching problems**: `redis-specialist`
 - **Security concerns**: `security-auditor`
 
 ### For Development Tasks:
@@ -147,6 +175,11 @@ API documentation, README files, architecture docs, user guides, and technical w
 - **Frontend components**: `frontend-specialist`
 - **Database design**: `database-architect`
 - **API endpoints**: `django-specialist` or `api-designer`
+- **Admin interfaces**: `django-admin-specialist` or `django-unfold-admin-specialist`
+- **Image handling**: `file-storage-specialist` with Pillow processing
+- **Background tasks**: `celery-specialist`
+- **Caching strategies**: `redis-specialist`
+- **File uploads**: `file-storage-specialist`
 - **Mobile apps**: `mobile-developer`
 
 ### For Complex Projects:
@@ -161,6 +194,24 @@ API documentation, README files, architecture docs, user guides, and technical w
 - **Refactoring**: `refactoring-agent`
 - **Documentation**: `documentation-writer`
 
+## ⭐ Django Ecosystem Powerhouse
+
+**Complete Django/DRF/Celery/Redis/Postgres Stack Coverage:**
+
+- **`django-specialist`** - Core Django + DRF + ORM + Pillow patterns
+- **`django-admin-specialist`** - Advanced admin customization + image management  
+- **`django-unfold-admin-specialist`** - Modern Tailwind admin interfaces
+- **`celery-specialist`** - Async task processing + image workflows
+- **`redis-specialist`** - Caching + session management + rate limiting
+- **`file-storage-specialist`** - Cloud storage + Pillow integration + CDN
+- **`monitoring-specialist`** - Sentry + Prometheus + structured logging
+
+**Key Features:**
+- 🖼️ **Full Pillow Integration** - Image processing, optimization, WebP conversion
+- 🎨 **Modern Admin UX** - Django Unfold with Tailwind components
+- ⚡ **Enterprise DRF Patterns** - ViewSets, serializers, permissions, filtering
+- 🚀 **Production Ready** - Async processing, caching, monitoring, security
+
 ## 🚀 Best Practices
 
 1. **Always delegate to specialists** - Each agent has deep expertise in their domain
@@ -168,6 +219,7 @@ API documentation, README files, architecture docs, user guides, and technical w
 3. **Use orchestrator-agent** for multi-step tasks requiring coordination
 4. **Start with debugging** - Use `debugger-detective` to investigate issues before fixing
 5. **Follow the chain** - Let specialists recommend other agents for follow-up work
+6. **Django stack coordination** - Use multiple Django specialists together for complex projects
 
 ## 🔧 Capabilities
 
