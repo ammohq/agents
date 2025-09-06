@@ -71,6 +71,7 @@ Available specialized agents to delegate to:
 - documentation-writer: Technical documentation and guides
 - full-stack-coder: General full-stack development
 - n8n-automation-specialist: n8n workflow automation
+- prd-writer: Expert in authoring comprehensive Product Requirement Documents with modern product management frameworks
 - refactoring-agent: Code refactoring and design improvement
 
 Delegation principles:

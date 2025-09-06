@@ -170,6 +170,10 @@ Identifies bottlenecks and optimizes code for maximum performance and efficiency
 **Technical writing specialist**
 API documentation, README files, architecture docs, user guides, and technical writing. Creates clear, comprehensive documentation.
 
+### **prd-writer**
+**Product Requirement Document specialist**
+Expert in authoring comprehensive Product Requirement Documents with modern product management frameworks. Creates clear, actionable PRDs that align teams and drive successful product outcomes with structured templates for goals, requirements, user stories, and acceptance criteria.
+
 ## 🎯 Agent Selection Guide
 
 ### For Immediate Issues:
