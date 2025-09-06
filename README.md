@@ -2,6 +2,19 @@
 
 A comprehensive collection of specialized AI agents for software development, each expertly crafted for specific technical domains. These agents follow the principle that specialized expertise delivers superior results compared to general-purpose approaches.
 
+## 📁 Repository Structure
+
+```
+agents/
+├── django/           # Django framework specialists (7 agents)
+├── backend/          # Backend infrastructure and services (10 agents)
+├── frontend/         # Frontend and UI specialists (5 agents)
+├── testing/          # Testing, debugging, and quality (5 agents)
+├── devops/           # DevOps and infrastructure (3 agents)
+├── utilities/        # General utilities and orchestration (5 agents)
+└── templates/        # Agent design templates and guidelines
+```
+
 ## Quick Start
 
 When working with Claude Code, use the `Task` tool to delegate work to appropriate specialists:
@@ -21,7 +34,7 @@ Use the Task tool with the devops-engineer to create GitHub Actions workflow for
 
 ### **orchestrator-agent**
 **Master coordinator for complex multi-step tasks**
-Analyzes complex projects and delegates to specialized subagents for coordinated problem-solving. Use when you have multi-faceted tasks requiring expertise across different domains.
+Analyzes complex projects and delegates to specialized subagents for coordinated problem-solving. Use when you have multi-faceted tasks requiring expertise across different domains. Has visibility into all 35 specialized agents across the entire ecosystem.
 
 ### **debugger-detective** 
 **Expert bug hunter and performance profiler**
@@ -231,6 +244,26 @@ Each agent includes:
 - **Documentation**: Clear explanations and examples
 - **Modern Standards**: Up-to-date with latest technologies and practices
 
+## 🎨 Agent Design System
+
+The repository includes comprehensive templates and guidelines for creating new agents:
+
+### Available Templates
+- **story-driven-template.md** - Narrative approach for user-facing agents
+- **minimalist-spec.md** - Just input/output contracts for simple utilities
+- **capability-matrix-template.md** - Data-driven with performance metrics
+
+### Standards & Guidelines
+- **yaml-frontmatter-standard.md** - Consistent metadata structure
+- **agent-validation-checklist.md** - Quality gates for all agents
+- **agent-design-style-guide.md** - Voice, tone, and formatting guidelines
+
+### Creating New Agents
+1. Choose an appropriate template based on complexity and purpose
+2. Follow the YAML frontmatter standard for metadata
+3. Validate against the quality checklist
+4. Place in the appropriate category directory
+
 ---
 
-**Remember**: These agents are designed to work together. Complex projects often require multiple specialists coordinated by the orchestrator-agent for optimal results.
+**Remember**: These agents are designed to work together. Complex projects often require multiple specialists coordinated by the orchestrator-agent for optimal results. The orchestrator has full visibility into all 35 agents and can effectively coordinate multi-domain tasks.
