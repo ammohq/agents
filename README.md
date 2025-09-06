@@ -9,6 +9,7 @@ agents/
 ├── django/           # Django framework specialists (7 agents)
 ├── backend/          # Backend infrastructure and services (10 agents)
 ├── frontend/         # Frontend and UI specialists (5 agents)
+├── ai/               # AI and machine learning specialists (1 agent)
 ├── testing/          # Testing, debugging, and quality (5 agents)
 ├── devops/           # DevOps and infrastructure (3 agents)
 ├── utilities/        # General utilities and orchestration (5 agents)
@@ -116,9 +117,9 @@ HTMX, Alpine.js integration, Django + HTMX patterns, progressive enhancement, an
 **Cross-platform mobile specialist**
 React Native, Flutter, PWAs, mobile optimization, app store deployment, and native integrations. Creates polished mobile experiences.
 
-### **ux-specialist**
-**User experience testing expert**
-UX/UI testing, accessibility compliance, user interaction flows, visual regression testing using Playwright and Puppeteer. Ensures excellent user experiences.
+### **ux-specialist** ⭐
+**User experience testing expert with AI-powered automation**
+UX/UI testing, accessibility compliance, user interaction flows, visual regression testing using Playwright, Puppeteer, and **Stagehand** for AI-powered natural language automation. Features intelligent bug reproduction, automated issue diagnosis, and context-aware testing. Ensures excellent user experiences through both traditional and AI-enhanced testing methods.
 
 ### **accessibility-champion**
 **Inclusive design specialist**
@@ -150,6 +151,12 @@ Email templates, deliverability, SendGrid/SES integration, and email marketing. 
 **Payment processing expert**
 Stripe, PayPal, payment processing, subscriptions, PCI compliance, and webhook handling. Implements secure payment systems.
 
+## 🤖 AI & Machine Learning Specialists
+
+### **chatgpt-specialist** ⭐
+**OpenAI and ChatGPT integration master**
+Complete OpenAI Python SDK integration (sync/async), Django + Celery patterns, streaming responses with Django Channels, function calling framework, embeddings and vector operations, structured outputs with Pydantic, and production-grade error handling. Expert in GPT-4, GPT-3.5, cost optimization, token management, fine-tuning, and webhook handling. Implements scalable AI features with comprehensive monitoring and security best practices.
+
 ## 🛠️ Infrastructure & Operations
 
 ### **devops-engineer**
@@ -179,13 +186,14 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 ### For Immediate Issues:
 - **Bug reports**: `debugger-detective`
 - **Performance problems**: `performance-analyzer`  
-- **UI/UX issues**: `ux-specialist` or `frontend-specialist`
+- **UI/UX issues**: `ux-specialist` (with Stagehand AI) or `frontend-specialist`
 - **Django/API problems**: `django-specialist`
 - **Admin interface issues**: `django-admin-specialist` or `django-unfold-admin-specialist`
 - **Image processing problems**: `file-storage-specialist` (Pillow integration)
 - **Async task issues**: `celery-specialist`
 - **Caching problems**: `redis-specialist`
 - **Security concerns**: `security-auditor`
+- **AI/ChatGPT integration**: `chatgpt-specialist`
 
 ### For Development Tasks:
 - **New features**: `full-stack-coder` or domain-specific specialist
@@ -198,6 +206,8 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 - **Caching strategies**: `redis-specialist`
 - **File uploads**: `file-storage-specialist`
 - **Mobile apps**: `mobile-developer`
+- **AI features**: `chatgpt-specialist` for OpenAI/ChatGPT integration
+- **Natural language testing**: `ux-specialist` with Stagehand
 
 ### For Complex Projects:
 - **Multi-domain tasks**: `orchestrator-agent`
@@ -270,4 +280,26 @@ The repository includes comprehensive templates and guidelines for creating new 
 
 ---
 
-**Remember**: These agents are designed to work together. Complex projects often require multiple specialists coordinated by the orchestrator-agent for optimal results. The orchestrator has full visibility into all 35 agents and can effectively coordinate multi-domain tasks.
+## 🌟 Latest Additions
+
+### **ChatGPT Specialist** (New!)
+Complete OpenAI integration expert covering:
+- Async/sync Python SDK patterns
+- Django + Celery background processing
+- Real-time streaming with Django Channels
+- Function calling and tool use frameworks
+- Embeddings and vector search
+- Cost optimization and monitoring
+- Production security best practices
+
+### **Stagehand Integration** (Enhanced UX Specialist!)
+The `ux-specialist` now includes Stagehand for AI-powered browser automation:
+- Natural language test actions ("click on the login button")
+- Intelligent bug reproduction and diagnosis
+- AI-powered visual regression detection
+- Context-aware form filling and validation
+- Hybrid testing combining AI with traditional automation
+
+---
+
+**Remember**: These agents are designed to work together. Complex projects often require multiple specialists coordinated by the orchestrator-agent for optimal results. The orchestrator has full visibility into all 36 agents and can effectively coordinate multi-domain tasks.
