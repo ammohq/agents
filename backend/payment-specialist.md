@@ -1,6 +1,7 @@
 ---
 name: payment-specialist
 description: Expert in Stripe, PayPal, payment processing, subscriptions, PCI compliance, and webhook handling
+model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

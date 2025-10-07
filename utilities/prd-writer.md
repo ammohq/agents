@@ -1,7 +1,7 @@
 ---
 name: prd-writer
 description: Expert in authoring comprehensive Product Requirement Documents with modern product management frameworks
-model: opus
+model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, WebSearch
 ---
 

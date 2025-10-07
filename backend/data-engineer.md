@@ -1,7 +1,7 @@
 ---
 name: data-engineer
 description: Expert in ETL pipelines, Apache Airflow, Spark, data warehousing, Pandas optimization, and big data processing
-model: opus
+model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

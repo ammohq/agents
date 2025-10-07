@@ -1,6 +1,7 @@
 ---
 name: security-auditor
 description: Identifies vulnerabilities and enforces defensive security practices
+model: claude-sonnet-4-5-20250929
 tools: Read, Grep, Glob, Bash, WebSearch
 ---
 

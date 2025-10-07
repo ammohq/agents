@@ -1,7 +1,7 @@
 ---
 name: redis-specialist
 description: Expert in Redis cache patterns, pub/sub, streams, session management, rate limiting, distributed locking, and Django cache framework integration
-model: opus
+model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

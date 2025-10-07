@@ -1,6 +1,7 @@
 ---
 name: htmx-boss
 description: Master of HTMX, hypermedia-driven architecture, Alpine.js integration, Django + HTMX patterns, _hyperscript, SSE/WebSockets with HTMX, progressive enhancement, and SPA-like experiences without JavaScript frameworks
+model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

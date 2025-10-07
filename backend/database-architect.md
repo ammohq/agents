@@ -1,7 +1,7 @@
 ---
 name: database-architect
 description: Expert in PostgreSQL, MySQL, database design, query optimization, indexing strategies, migrations, replication, sharding, and data modeling
-model: opus
+model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: migration-specialist
 description: Expert in legacy code modernization, framework upgrades, database migrations, and zero-downtime deployments
-model: opus
+model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

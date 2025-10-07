@@ -1,7 +1,7 @@
 ---
 name: orchestrator-agent
 description: Analyzes complex tasks and delegates to specialized subagents for coordinated problem-solving
-model: opus
+model: claude-sonnet-4-5-20250929
 tools: Task, TodoWrite, Read, Grep, Glob
 ---
 

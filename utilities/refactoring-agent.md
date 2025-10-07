@@ -1,6 +1,7 @@
 ---
 name: refactoring-agent
 description: Improves code structure and design while preserving behavior through systematic refactoring
+model: claude-sonnet-4-5-20250929
 tools: Read, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

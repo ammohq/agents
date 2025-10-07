@@ -1,6 +1,7 @@
 ---
 name: test-writer
 description: Generates comprehensive test suites following TDD principles and best practices
+model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep
 ---
 

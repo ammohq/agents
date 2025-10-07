@@ -1,6 +1,7 @@
 ---
 name: accessibility-champion
 description: Expert in WCAG compliance, ARIA, screen readers, keyboard navigation, and inclusive design
+model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

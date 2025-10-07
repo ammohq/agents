@@ -1,7 +1,7 @@
 ---
 name: django-admin-specialist
 description: Expert in Django admin customization, advanced admin interfaces, inline formsets, custom filters, actions, performance optimization, and third-party packages like Grappelli and Jazzmin
-model: opus
+model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: documentation-writer
 description: Expert in API documentation, README files, architecture docs, user guides, and technical writing
+model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

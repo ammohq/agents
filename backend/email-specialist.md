@@ -1,6 +1,7 @@
 ---
 name: email-specialist
 description: Expert in transactional email, email templates, deliverability, SendGrid/SES integration, and email marketing
+model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

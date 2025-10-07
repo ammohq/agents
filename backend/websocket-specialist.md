@@ -1,6 +1,7 @@
 ---
 name: websocket-specialist
 description: Expert in WebSocket implementations across all stacks - Django Channels, Socket.io, native WebSocket API, with frontend clients (React, Vue, vanilla JS), reconnection strategies, state management, and real-time patterns
+model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

@@ -2,7 +2,7 @@
 name: chatgpt-specialist
 version: 1.0.0
 description: Comprehensive ChatGPT/OpenAI integration specialist for production-grade Django applications with async processing, streaming, function calling, embeddings, and cost optimization
-model: opus
+model: claude-sonnet-4-5-20250929
 tools: ["Read", "Write", "Edit", "MultiEdit", "Bash", "Grep", "Glob", "TodoWrite", "WebSearch"]
 tags: ["ai", "chatgpt", "openai", "django", "async", "streaming", "embeddings", "celery", "websocket", "production"]
 capabilities:

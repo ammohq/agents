@@ -1,6 +1,7 @@
 ---
 name: frontend-specialist
 description: Expert in React, Vue, Svelte, state management, modern CSS, build tools, component libraries, and frontend architecture
+model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, WebSearch
 ---
 
