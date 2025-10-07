@@ -9,9 +9,9 @@ agents/
 ├── django/           # Django framework specialists (7 agents)
 ├── backend/          # Backend infrastructure and services (10 agents)
 ├── frontend/         # Frontend and UI specialists (5 agents)
-├── ai/               # AI and machine learning specialists (1 agent)
+├── ai/               # AI and machine learning specialists (2 agents)
 ├── testing/          # Testing, debugging, and quality (5 agents)
-├── devops/           # DevOps and infrastructure (3 agents)
+├── devops/           # DevOps and infrastructure (4 agents)
 ├── utilities/        # General utilities and orchestration (5 agents)
 └── templates/        # Agent design templates and guidelines
 ```
@@ -157,11 +157,19 @@ Stripe, PayPal, payment processing, subscriptions, PCI compliance, and webhook h
 **OpenAI and ChatGPT integration master**
 Complete OpenAI Python SDK integration (sync/async), Django + Celery patterns, streaming responses with Django Channels, function calling framework, embeddings and vector operations, structured outputs with Pydantic, and production-grade error handling. Expert in GPT-4, GPT-3.5, cost optimization, token management, fine-tuning, and webhook handling. Implements scalable AI features with comprehensive monitoring and security best practices.
 
+### **stockfish-specialist** ⭐
+**Stockfish chess engine integration expert**
+Complete Stockfish UCI protocol integration, NNUE neural network evaluation, REST API development (FastAPI/Django), python-chess library mastery, Docker/Kubernetes deployment, Syzygy tablebase configuration, analysis caching strategies, and performance optimization. Expert in position analysis, best move calculation, batch processing, real-time streaming, and production chess analysis systems with horizontal scaling.
+
 ## 🛠️ Infrastructure & Operations
 
 ### **devops-engineer**
 **Infrastructure and deployment expert**
 Docker, Kubernetes, CI/CD, AWS/GCP/Azure, Terraform, GitHub Actions, monitoring, and production deployment strategies. Handles all DevOps needs.
+
+### **coolify-specialist** ⭐
+**Coolify self-hosting platform expert with MCP integration**
+Manages Coolify PaaS deployments via coolify-mcp-server. Application deployments, database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.), server management, environment configuration, service orchestration, zero-downtime deployments, and resource monitoring. Complete control over self-hosted infrastructure through Coolify API integration.
 
 ### **security-auditor**
 **Defensive security specialist**
@@ -194,6 +202,7 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 - **Caching problems**: `redis-specialist`
 - **Security concerns**: `security-auditor`
 - **AI/ChatGPT integration**: `chatgpt-specialist`
+- **Chess engine integration**: `stockfish-specialist`
 
 ### For Development Tasks:
 - **New features**: `full-stack-coder` or domain-specific specialist
@@ -207,12 +216,14 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 - **File uploads**: `file-storage-specialist`
 - **Mobile apps**: `mobile-developer`
 - **AI features**: `chatgpt-specialist` for OpenAI/ChatGPT integration
+- **Chess applications**: `stockfish-specialist` for engine integration
 - **Natural language testing**: `ux-specialist` with Stagehand
 
 ### For Complex Projects:
 - **Multi-domain tasks**: `orchestrator-agent`
 - **System migrations**: `migration-specialist`
 - **Infrastructure setup**: `devops-engineer`
+- **Self-hosted deployments**: `coolify-specialist`
 - **Data pipelines**: `data-engineer`
 
 ### For Quality & Maintenance:
@@ -282,7 +293,28 @@ The repository includes comprehensive templates and guidelines for creating new 
 
 ## 🌟 Latest Additions
 
-### **ChatGPT Specialist** (New!)
+### **Stockfish Specialist** (New!)
+Chess engine integration and analysis systems:
+- Complete UCI protocol communication with python-chess
+- NNUE neural network evaluation (10-50x faster than traditional)
+- REST API servers (FastAPI/Django) for position analysis
+- Docker/Kubernetes deployment with horizontal scaling
+- Syzygy tablebase configuration for perfect endgame play
+- Analysis result caching with Redis for performance
+- Batch processing and real-time WebSocket streaming
+- Production optimization (threads, hash tables, search depth)
+
+### **Coolify Specialist** (New!)
+Self-hosted PaaS management through coolify-mcp-server:
+- Application deployment and lifecycle management
+- Database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.)
+- Server resource monitoring and validation
+- Environment variable and secret management
+- Zero-downtime deployment strategies
+- Domain and SSL/TLS configuration
+- Project and team organization
+
+### **ChatGPT Specialist**
 Complete OpenAI integration expert covering:
 - Async/sync Python SDK patterns
 - Django + Celery background processing
@@ -302,4 +334,4 @@ The `ux-specialist` now includes Stagehand for AI-powered browser automation:
 
 ---
 
-**Remember**: These agents are designed to work together. Complex projects often require multiple specialists coordinated by the orchestrator-agent for optimal results. The orchestrator has full visibility into all 36 agents and can effectively coordinate multi-domain tasks.
+**Remember**: These agents are designed to work together. Complex projects often require multiple specialists coordinated by the orchestrator-agent for optimal results. The orchestrator has full visibility into all 38 agents and can effectively coordinate multi-domain tasks.
