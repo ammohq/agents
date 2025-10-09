@@ -128,8 +128,8 @@ WCAG compliance, ARIA, screen readers, keyboard navigation, and inclusive design
 ## ⚡ Specialized Technology Experts
 
 ### **websocket-specialist**
-**Real-time communication expert**
-WebSocket implementations across all stacks - Django Channels, Socket.io, native WebSocket API with frontend clients, reconnection strategies, and real-time patterns.
+**Elite Python WebSocket expert for massive multiplayer realtime systems**
+Django Channels mastery, Twisted Framework expertise, horizontal scaling to 100k+ concurrent connections, Redis/RabbitMQ channel layers, sharding strategies, binary protocols (msgpack), production architecture with Nginx load balancing, Prometheus monitoring, and comprehensive load testing. Covers game rooms, presence tracking, spatial partitioning, and state synchronization patterns.
 
 ### **search-specialist**
 **Search and discovery expert**
