@@ -1,7 +1,7 @@
 ---
 name: coolify-specialist
-version: 1.1.0
-description: Expert in Coolify self-hosting platform with diagnostics, transaction-safe operations, and gateway timeout debugging. Handles deployment automation, server management, application orchestration, and on-demand incident recovery via coolify-mcp-server
+version: 1.2.0
+description: Expert in Coolify self-hosting platform with diagnostics, transaction-safe operations, gateway timeout debugging, and static site deployment with Traefik. Handles deployment automation, server management, application orchestration, nginx:alpine configuration, health check patterns, Let's Encrypt certificate generation, and on-demand incident recovery via coolify-mcp-server
 model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, mcp__coolify__*
 modes: ["on-demand", "dry-run"]
@@ -25,6 +25,10 @@ Manages Coolify self-hosted PaaS deployments through MCP integration with transa
 - **Server Operations**: Server validation, resource monitoring, domain configuration
 - **Deployment Strategies**: Force rebuild, branch selection, zero-downtime deployments
 - **Project Organization**: Project and environment structuring, team management
+- **Static Site Deployments**: nginx:alpine container configuration, static HTML/CSS/JS hosting
+- **Traefik Integration**: Label configuration, internal port routing, proxy setup
+- **Health Check Patterns**: Container health monitoring, curl-based checks, endpoint debugging
+- **Let's Encrypt Automation**: Certificate generation, domain validation, SSL troubleshooting
 
 ## CONTRACT
 
@@ -1019,6 +1023,494 @@ Performance issues:
 3. mcp__coolify__get_project_details → Inspect project
 4. mcp__coolify__list_project_environments → Check envs
 ```
+
+## STATIC SITE DEPLOYMENT PATTERNS
+
+Universal best practices for deploying static sites (HTML/CSS/JS) to Coolify with Traefik proxy using nginx:alpine containers.
+
+**Based on**: Real-world deployment experience with nginx:alpine containers and Traefik integration.
+
+### Quick Start Checklist
+
+#### Pre-Deployment Requirements
+- [ ] Static site files ready (index.html, assets/, etc.)
+- [ ] Git repository created
+- [ ] DNS A record configured (points to Coolify server IP)
+- [ ] Coolify server accessible
+- [ ] Traefik proxy running on Coolify server
+
+#### Required Files
+- [ ] `Dockerfile` - nginx:alpine with health check
+- [ ] `docker-compose.yaml` - Service definition with Traefik labels
+- [ ] `default.conf` - nginx server block with /health endpoint
+- [ ] `.dockerignore` - Excludes .git, .env, etc.
+
+### Critical Gotchas (MUST READ)
+
+#### 1. NEVER Expose Host Ports with Traefik
+
+❌ **WRONG**:
+```yaml
+ports:
+  - "80:80"  # Error: port is already allocated
+```
+
+✅ **CORRECT**:
+```yaml
+# No ports declaration - Traefik routes internally
+labels:
+  - "traefik.http.services.{app-name}.loadbalancer.server.port=80"
+```
+
+**Why**: Traefik binds to host ports 80/443. Containers communicate via Docker networks.
+
+#### 2. nginx:alpine Config Location Matters
+
+❌ **WRONG**:
+```dockerfile
+COPY nginx.conf /etc/nginx/nginx.conf  # Breaks entrypoint
+```
+
+✅ **CORRECT**:
+```dockerfile
+COPY default.conf /etc/nginx/conf.d/default.conf
+```
+
+**Why**: nginx:alpine's entrypoint expects configs in `/etc/nginx/conf.d/`.
+
+#### 3. Use curl, NOT wget for Health Checks
+
+❌ **WRONG**:
+```dockerfile
+HEALTHCHECK CMD wget -4 --quiet --spider http://localhost/health
+# Error: wget: unrecognized option: 4
+```
+
+✅ **CORRECT**:
+```dockerfile
+HEALTHCHECK CMD curl -f http://127.0.0.1/health || exit 1
+```
+
+**Why**: BusyBox wget doesn't support `-4`, `-6`, or many GNU wget flags.
+
+#### 4. Use 127.0.0.1, NOT localhost
+
+❌ **WRONG**:
+```bash
+curl http://localhost:80/health  # May fail on IPv6 resolution
+```
+
+✅ **CORRECT**:
+```bash
+curl http://127.0.0.1:80/health  # Explicit IPv4
+```
+
+**Why**: `localhost` resolves to `::1` (IPv6) first. nginx on `0.0.0.0:80` is IPv4 only.
+
+#### 5. Health Check Endpoints Must Match
+
+❌ **WRONG**:
+```yaml
+# docker-compose.yaml tests /
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
+
+# nginx defines /health
+location /health { return 200; }
+```
+
+✅ **CORRECT**: Both test `/health` endpoint
+
+**Why**: docker-compose health check OVERRIDES Dockerfile HEALTHCHECK.
+
+#### 6. Let's Encrypt Needs Healthy Backend
+
+❌ **WRONG** Order:
+1. Deploy with failing health check
+2. Debug SSL issues
+3. Fix health check
+
+✅ **CORRECT** Order:
+1. Fix health check FIRST
+2. Wait for certificate (auto-generates)
+3. Verify SSL
+
+**Why**: Traefik's Let's Encrypt requires healthy backend for domain validation.
+
+#### 7. Always Define /health Endpoint
+
+✅ **REQUIRED**:
+```nginx
+location /health {
+    access_log off;
+    return 200 "OK\n";
+    add_header Content-Type text/plain;
+}
+```
+
+**Why**: Enables container health monitoring separate from application logic.
+
+### Deployment Templates
+
+#### Dockerfile Template
+
+```dockerfile
+FROM nginx:alpine
+
+# Copy static files
+COPY index.html /usr/share/nginx/html/
+COPY assets/ /usr/share/nginx/html/assets/
+COPY default.conf /etc/nginx/conf.d/default.conf
+
+# Expose internal port
+EXPOSE 80
+
+# Health check (curl, 127.0.0.1, /health)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://127.0.0.1:80/health || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+#### docker-compose.yaml Template
+
+```yaml
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: {app-name}-web
+    restart: unless-stopped
+
+    # Health check matching Dockerfile
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:80/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    # Traefik labels (NO ports declaration!)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{app-name}.rule=Host(`{domain.com}`)"
+      - "traefik.http.routers.{app-name}.entrypoints=websecure"
+      - "traefik.http.routers.{app-name}.tls=true"
+      - "traefik.http.routers.{app-name}.tls.certresolver=letsencrypt"
+      - "traefik.http.services.{app-name}.loadbalancer.server.port=80"
+```
+
+**Key Points**:
+- Replace `{app-name}` with your app identifier
+- Replace `{domain.com}` with your domain
+- NO `ports:` declaration
+- NO custom `networks:` (use Coolify default)
+
+#### nginx default.conf Template
+
+```nginx
+server {
+    listen 80;
+    server_name {domain.com} www.{domain.com};
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+
+    # Cache static assets (1 year)
+    location ~* \.(css|js|woff2|woff|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # Main location (SPA-friendly)
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache, must-revalidate";
+    }
+
+    # Health check endpoint (REQUIRED)
+    location /health {
+        access_log off;
+        return 200 "OK\n";
+        add_header Content-Type text/plain;
+    }
+
+    # Security: Deny hidden files
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+}
+```
+
+**Key Points**:
+- Replace `{domain.com}` with your domain
+- `/health` endpoint is REQUIRED
+- Includes security headers
+- SPA-friendly `try_files` directive
+
+### Common Issues & Solutions
+
+#### Issue: "Port Already Allocated"
+
+**Symptom**:
+```
+Error: Bind for 0.0.0.0:80 failed: port is already allocated
+```
+
+**Solution**: Remove `ports:` from docker-compose.yaml. Let Traefik handle routing.
+
+#### Issue: Container "unhealthy" Status
+
+**Symptom**:
+```bash
+docker ps
+# STATUS: Up 2 minutes (unhealthy)
+```
+
+**Debug Steps**:
+```bash
+# 1. Check health check logs
+docker inspect CONTAINER_ID --format='{{json .State.Health}}' | jq
+
+# 2. Test manually
+docker exec CONTAINER_ID curl -f http://127.0.0.1/health
+
+# 3. Check nginx is running
+docker exec CONTAINER_ID ps aux | grep nginx
+```
+
+**Common Causes**:
+- Health check tests wrong endpoint (`/` vs `/health`)
+- Using `localhost` instead of `127.0.0.1`
+- Using `wget` instead of `curl`
+- nginx configuration error
+
+#### Issue: 503 Service Unavailable
+
+**Symptom**: Site returns 503 from Traefik
+
+**Debug Steps**:
+```bash
+# 1. Verify container is healthy
+docker ps --filter "name={container-name}"
+# Must show (healthy), not (unhealthy)
+
+# 2. Wait for health check
+# Needs start_period (10s) + 3 successful checks (90s) = ~100s total
+
+# 3. Check Traefik can reach backend
+docker logs traefik | grep {app-name}
+```
+
+**Solution**: Fix health check. Traefik won't route to unhealthy containers.
+
+#### Issue: SSL Certificate Not Generating
+
+**Symptom**: `ERR_CERT_AUTHORITY_INVALID` or self-signed cert
+
+**Debug Steps**:
+```bash
+# 1. Verify DNS resolves correctly
+dig {domain.com} +short
+# Should return your server IP
+
+# 2. Check container is healthy
+docker ps --filter "name={container-name}"
+# Must be (healthy)
+
+# 3. Check Traefik logs
+docker logs traefik | grep -i "certificate\|letsencrypt"
+```
+
+**Fix Order**:
+1. Ensure health check passes
+2. Verify DNS points to server
+3. Wait 1-5 minutes for Let's Encrypt validation
+4. Certificate auto-generates
+
+#### Issue: Static Assets 404
+
+**Symptom**: HTML loads but CSS/JS/images return 404
+
+**Debug Steps**:
+```bash
+# 1. Check files exist in container
+docker exec CONTAINER_ID ls -la /usr/share/nginx/html/
+docker exec CONTAINER_ID ls -la /usr/share/nginx/html/assets/
+
+# 2. Check nginx config
+docker exec CONTAINER_ID cat /etc/nginx/conf.d/default.conf
+
+# 3. Check nginx error logs
+docker logs CONTAINER_ID | grep -i "error\|404"
+```
+
+**Solution**: Ensure Dockerfile copies all asset directories.
+
+### Deployment Verification Checklist
+
+After deployment, verify:
+
+#### 1. Container Health
+```bash
+docker ps --filter "name={container-name}"
+# STATUS should show (healthy)
+```
+
+#### 2. Health Endpoint
+```bash
+curl http://{server-ip}/health
+# Should return: OK
+```
+
+#### 3. HTTPS Access
+```bash
+curl -I https://{domain.com}
+# Should return: HTTP/2 200
+```
+
+#### 4. SSL Certificate
+```bash
+openssl s_client -connect {domain.com}:443 -servername {domain.com} \
+  </dev/null 2>/dev/null | openssl x509 -noout -issuer
+# Should show: Let's Encrypt Authority
+```
+
+#### 5. Security Headers
+```bash
+curl -I https://{domain.com} | grep -i "x-frame\|x-content\|x-xss"
+# Should show security headers
+```
+
+#### 6. Static Assets
+```bash
+curl -I https://{domain.com}/assets/main.css
+# Should return: HTTP/2 200
+```
+
+### Performance Best Practices
+
+#### Resource Allocation
+
+```yaml
+# Minimal for static sites
+deploy:
+  resources:
+    limits:
+      cpus: '0.5'
+      memory: 128M
+    reservations:
+      cpus: '0.1'
+      memory: 64M
+```
+
+#### nginx Optimization
+
+```nginx
+# Enable gzip (if not handled by Traefik)
+gzip on;
+gzip_vary on;
+gzip_types text/css application/javascript;
+
+# Increase worker connections (if needed)
+events {
+    worker_connections 1024;
+}
+
+# sendfile for better performance
+sendfile on;
+tcp_nopush on;
+tcp_nodelay on;
+```
+
+### Security Checklist
+
+- [ ] Security headers configured (X-Frame-Options, etc.)
+- [ ] Hidden files blocked (`.env`, `.git`)
+- [ ] HTTPS enforced (Traefik redirect)
+- [ ] No secrets in Docker image
+- [ ] `.dockerignore` excludes sensitive files
+- [ ] Server tokens hidden (`server_tokens off;`)
+
+### DO / DON'T Summary
+
+#### ✅ DO:
+- Use `curl` for health checks
+- Use `127.0.0.1` not `localhost`
+- Place nginx config in `/etc/nginx/conf.d/`
+- Define `/health` endpoint
+- Sync health checks (Dockerfile + docker-compose)
+- Let Traefik handle SSL/ports
+- Use Coolify default network
+- Set `restart: unless-stopped`
+
+#### ❌ DON'T:
+- Expose host ports with Traefik
+- Use `wget` in Alpine images
+- Use `localhost` for health checks
+- Replace `/etc/nginx/nginx.conf`
+- Create custom networks (unless necessary)
+- Skip health check definition
+- Deploy without DNS configured
+- Commit secrets to repository
+
+### Reference Commands
+
+#### Debugging Container
+
+```bash
+# Enter container shell
+docker exec -it CONTAINER_ID sh
+
+# Check nginx config
+nginx -t
+
+# Test health endpoint
+curl -f http://127.0.0.1/health
+
+# View nginx logs
+cat /var/log/nginx/error.log
+```
+
+#### Coolify MCP Commands
+
+```python
+# List applications
+mcp__coolify__list_applications()
+
+# Restart application
+mcp__coolify__restart_application(uuid="app-uuid")
+
+# Get deployment status
+mcp__coolify__get_deployment(uuid="deployment-uuid")
+```
+
+### Success Criteria
+
+A successful deployment shows:
+- ✅ Container status: `(healthy)`
+- ✅ HTTPS accessible
+- ✅ Let's Encrypt certificate valid
+- ✅ Health endpoint returns 200
+- ✅ Static assets load correctly
+- ✅ Security headers present
+- ✅ No console errors
+
+**Typical deployment time**: 5-10 minutes (with no issues)
+**With debugging**: 15-45 minutes (depending on issue complexity)
 
 ## EXAMPLE
 

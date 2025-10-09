@@ -168,8 +168,8 @@ Complete Stockfish UCI protocol integration, NNUE neural network evaluation, RES
 Docker, Kubernetes, CI/CD, AWS/GCP/Azure, Terraform, GitHub Actions, monitoring, and production deployment strategies. Handles all DevOps needs.
 
 ### **coolify-specialist** ⭐
-**Coolify self-hosting platform expert with MCP integration and gateway timeout prevention**
-Manages Coolify PaaS deployments via coolify-mcp-server. Application deployments, database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.), server management, environment configuration, service orchestration, zero-downtime deployments, and resource monitoring. Expert in preventing Gateway timeout errors by avoiding custom Docker networks and using Coolify Destinations instead. Complete control over self-hosted infrastructure through Coolify API integration with production-safe networking patterns.
+**Coolify self-hosting platform expert with MCP integration, static site deployments, and gateway timeout prevention**
+Manages Coolify PaaS deployments via coolify-mcp-server. Application deployments, database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.), server management, environment configuration, service orchestration, zero-downtime deployments, and resource monitoring. Expert in static site deployments with nginx:alpine containers, Traefik integration, health check patterns, and Let's Encrypt certificate generation. Prevents Gateway timeout errors by avoiding custom Docker networks and using Coolify Destinations instead. Complete control over self-hosted infrastructure through Coolify API integration with production-safe networking patterns.
 
 ### **security-auditor**
 **Defensive security specialist**
