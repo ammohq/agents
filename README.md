@@ -200,6 +200,7 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 - **Image processing problems**: `file-storage-specialist` (Pillow integration)
 - **Async task issues**: `celery-specialist`
 - **Caching problems**: `redis-specialist`
+- **Deployment issues**: `coolify-specialist` (health checks, SSL, 503/504 errors)
 - **Security concerns**: `security-auditor`
 - **AI/ChatGPT integration**: `chatgpt-specialist`
 - **Chess engine integration**: `stockfish-specialist`
@@ -215,6 +216,7 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 - **Caching strategies**: `redis-specialist`
 - **File uploads**: `file-storage-specialist`
 - **Mobile apps**: `mobile-developer`
+- **Static site deployments**: `coolify-specialist` with nginx:alpine + Traefik
 - **AI features**: `chatgpt-specialist` for OpenAI/ChatGPT integration
 - **Chess applications**: `stockfish-specialist` for engine integration
 - **Natural language testing**: `ux-specialist` with Stagehand
@@ -304,8 +306,8 @@ Chess engine integration and analysis systems:
 - Batch processing and real-time WebSocket streaming
 - Production optimization (threads, hash tables, search depth)
 
-### **Coolify Specialist** (Updated!)
-Self-hosted PaaS management through coolify-mcp-server with Gateway timeout prevention:
+### **Coolify Specialist** (v1.2.0 - Updated!)
+Self-hosted PaaS management through coolify-mcp-server with static site deployment expertise:
 - Application deployment and lifecycle management
 - Database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.)
 - Server resource monitoring and validation
@@ -313,6 +315,10 @@ Self-hosted PaaS management through coolify-mcp-server with Gateway timeout prev
 - Zero-downtime deployment strategies
 - Domain and SSL/TLS configuration
 - Project and team organization
+- **Static Site Deployments** - nginx:alpine containers with Traefik integration
+- **Health Check Patterns** - curl-based checks, 127.0.0.1 vs localhost gotchas
+- **Let's Encrypt Automation** - Certificate generation and troubleshooting
+- **7 Critical Gotchas** - Production-tested deployment templates and workflows
 - **Gateway timeout diagnostics and prevention** - Never use custom Docker networks
 - **Coolify Destinations** - Production-safe network isolation patterns
 - **Systematic RCA** - Multi-step root cause analysis for 504 errors
