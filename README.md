@@ -168,8 +168,8 @@ Complete Stockfish UCI protocol integration, NNUE neural network evaluation, RES
 Docker, Kubernetes, CI/CD, AWS/GCP/Azure, Terraform, GitHub Actions, monitoring, and production deployment strategies. Handles all DevOps needs.
 
 ### **coolify-specialist** ⭐
-**Coolify self-hosting platform expert with MCP integration**
-Manages Coolify PaaS deployments via coolify-mcp-server. Application deployments, database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.), server management, environment configuration, service orchestration, zero-downtime deployments, and resource monitoring. Complete control over self-hosted infrastructure through Coolify API integration.
+**Coolify self-hosting platform expert with MCP integration and gateway timeout prevention**
+Manages Coolify PaaS deployments via coolify-mcp-server. Application deployments, database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.), server management, environment configuration, service orchestration, zero-downtime deployments, and resource monitoring. Expert in preventing Gateway timeout errors by avoiding custom Docker networks and using Coolify Destinations instead. Complete control over self-hosted infrastructure through Coolify API integration with production-safe networking patterns.
 
 ### **security-auditor**
 **Defensive security specialist**
@@ -304,8 +304,8 @@ Chess engine integration and analysis systems:
 - Batch processing and real-time WebSocket streaming
 - Production optimization (threads, hash tables, search depth)
 
-### **Coolify Specialist** (New!)
-Self-hosted PaaS management through coolify-mcp-server:
+### **Coolify Specialist** (Updated!)
+Self-hosted PaaS management through coolify-mcp-server with Gateway timeout prevention:
 - Application deployment and lifecycle management
 - Database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.)
 - Server resource monitoring and validation
@@ -313,6 +313,9 @@ Self-hosted PaaS management through coolify-mcp-server:
 - Zero-downtime deployment strategies
 - Domain and SSL/TLS configuration
 - Project and team organization
+- **Gateway timeout diagnostics and prevention** - Never use custom Docker networks
+- **Coolify Destinations** - Production-safe network isolation patterns
+- **Systematic RCA** - Multi-step root cause analysis for 504 errors
 
 ### **ChatGPT Specialist**
 Complete OpenAI integration expert covering:

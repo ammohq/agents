@@ -70,6 +70,8 @@ On error:
 8. ALWAYS use force rebuild only when necessary
 9. MUST verify server domain configuration before app creation
 10. ALWAYS log deployment operations for audit trail
+11. NEVER use custom Docker networks - ALWAYS use Coolify Destinations instead to avoid Gateway timeout errors
+12. MUST configure network destination in Coolify UI when network isolation is required
 
 ## INCIDENT OBJECT (STRUCTURED)
 
@@ -549,7 +551,11 @@ def diagnose_server(server_id: str) -> dict:
 
 ## GATEWAY TIMEOUT (504) PLAYBOOK
 
-Multi-step RCA for gateway timeout failures:
+Multi-step RCA for gateway timeout failures.
+
+**CRITICAL**: Custom Docker networks are the PRIMARY cause of Gateway timeout errors. The proxy becomes isolated from application containers, causing timeouts after hours/days of operation.
+
+**Prevention**: NEVER use custom Docker network definitions. ALWAYS use Coolify Destinations for network isolation instead.
 
 ```python
 def debug_gateway_timeout(app_id: str) -> dict:
@@ -558,6 +564,13 @@ def debug_gateway_timeout(app_id: str) -> dict:
 
     WHY: Systematically identify why reverse proxy cannot reach application
 
+    Common Causes (in order of frequency):
+    1. Custom Docker Network Isolation (MOST COMMON)
+    2. Large Upload/Download exceeding 60s timeout
+    3. Application not responding or slow startup
+    4. Port binding issues
+    5. DNS/SSL misconfiguration
+
     Returns: Structured incident with RCA and fix recommendations
     """
 
@@ -565,6 +578,27 @@ def debug_gateway_timeout(app_id: str) -> dict:
     print(f"🔍 Debugging 504 Gateway Timeout for {app_id}...")
 
     rca_steps = []
+
+    # Step 0: Check for custom network configuration (MOST COMMON CAUSE)
+    app_details = mcp__coolify__get_app_details({'id': app_id})
+    custom_network = app_details.get('custom_docker_network')
+
+    rca_steps.append({
+        'step': 'custom_network_check',
+        'result': 'found' if custom_network else 'none',
+        'details': f"Custom network: {custom_network}" if custom_network else "Using Coolify default networking"
+    })
+
+    if custom_network:
+        return _build_incident(
+            incident_id=incident_id,
+            stage='network_isolation',
+            root_cause="Application uses custom Docker network causing proxy isolation. Proxy cannot reach application containers on custom networks.",
+            recommended_fix="IMMEDIATE: Remove custom network definition. Configure network destination in Coolify UI instead. Redeploy application to use Coolify Destinations for proper network routing.",
+            severity='critical',
+            rca_steps=rca_steps,
+            app_id=app_id
+        )
 
     # Step 1: Container readiness
     app_details = mcp__coolify__get_app_details({'id': app_id})
@@ -902,6 +936,12 @@ Database health:
 
 ### Common Issues
 ```yaml
+Gateway Timeout (504) - MOST COMMON:
+- Custom Docker networks → NEVER USE - Remove custom network, use Coolify Destinations
+- App works initially but fails after hours/days → Custom network isolation
+- Proxy cannot reach app → Check for custom network configuration first
+- Requests exceeding 60s → Increase Traefik timeout or implement async processing
+
 Deployment failures:
 - Build errors → Check logs, verify dependencies
 - Timeout → Increase timeout, check resource limits
