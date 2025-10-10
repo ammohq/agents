@@ -99,6 +99,10 @@ Apache Airflow, Spark, data warehousing, Pandas optimization, and big data proce
 **REST, GraphQL, and gRPC specialist**
 Comprehensive API design with OpenAPI documentation, versioning, authentication, and gateway configuration. Focuses on Django REST Framework.
 
+### **django-rest-framework-specialist** ⭐
+**Elite Django REST Framework specialist**
+Production-grade DRF API development with enterprise ViewSets, advanced serializers, custom permissions, authentication backends, filtering, pagination, OpenAPI documentation with drf-spectacular, testing, performance optimization, and comprehensive error handling. Deep expertise in ModelSerializer patterns, action-level permissions, query optimization, caching, throttling, and API versioning strategies.
+
 ### **migration-specialist**
 **Legacy modernization expert**
 Legacy code modernization, framework upgrades, database migrations, and zero-downtime deployments. Handles complex system transitions.
@@ -195,7 +199,8 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 - **Bug reports**: `debugger-detective`
 - **Performance problems**: `performance-analyzer`  
 - **UI/UX issues**: `ux-specialist` (with Stagehand AI) or `frontend-specialist`
-- **Django/API problems**: `django-specialist`
+- **Django/API problems**: `django-specialist` or `django-rest-framework-specialist` for DRF-specific issues
+- **DRF serializer/ViewSet issues**: `django-rest-framework-specialist`
 - **Admin interface issues**: `django-admin-specialist` or `django-unfold-admin-specialist`
 - **Image processing problems**: `file-storage-specialist` (Pillow integration)
 - **Async task issues**: `celery-specialist`
@@ -209,7 +214,7 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 - **New features**: `full-stack-coder` or domain-specific specialist
 - **Frontend components**: `frontend-specialist`
 - **Database design**: `database-architect`
-- **API endpoints**: `django-specialist` or `api-designer`
+- **API endpoints**: `django-rest-framework-specialist` for DRF-specific, `django-specialist` for full-stack, or `api-designer` for multi-protocol
 - **Admin interfaces**: `django-admin-specialist` or `django-unfold-admin-specialist`
 - **Image handling**: `file-storage-specialist` with Pillow processing
 - **Background tasks**: `celery-specialist`
@@ -239,7 +244,8 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 **Complete Django/DRF/Celery/Redis/Postgres Stack Coverage:**
 
 - **`django-specialist`** - Core Django + DRF + ORM + Pillow patterns
-- **`django-admin-specialist`** - Advanced admin customization + image management  
+- **`django-rest-framework-specialist`** - Elite DRF API development with ViewSets, serializers, permissions
+- **`django-admin-specialist`** - Advanced admin customization + image management
 - **`django-unfold-admin-specialist`** - Modern Tailwind admin interfaces
 - **`celery-specialist`** - Async task processing + image workflows
 - **`redis-specialist`** - Caching + session management + rate limiting
