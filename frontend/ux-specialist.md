@@ -559,13 +559,13 @@ async function checkAvailableTools() {
 async function testUserRegistrationFlow() {
   // Navigate to registration page
   await browser.navigate('https://app.example.com/register');
-  
+
   // Take initial screenshot for baseline
   await browser.takeScreenshot({ filename: 'registration-page-initial.png' });
-  
+
   // Capture accessibility snapshot
   const snapshot = await browser.snapshot();
-  
+
   // Fill registration form
   await browser.fillForm({
     fields: [
@@ -575,17 +575,198 @@ async function testUserRegistrationFlow() {
       { name: 'Terms checkbox', type: 'checkbox', ref: 'input[name="terms"]', value: 'true' }
     ]
   });
-  
+
   // Submit form and handle dialog if needed
   await browser.click({ element: 'Submit button', ref: 'button[type="submit"]' });
-  
+
   // Wait for success message or redirect
   await browser.waitFor({ text: 'Registration successful' });
-  
+
   // Verify final state
   await browser.takeScreenshot({ filename: 'registration-success.png' });
 }
 ```
+
+## DRAG AND DROP TESTING
+
+Playwright provides simple drag-and-drop functionality for testing interactive UI elements.
+
+### What is Drag and Drop?
+Drag and drop is an interaction that allows users to click on an element, drag it to a different location, and then release it to drop it there.
+
+### Drag and Drop with Playwright MCP
+
+```javascript
+// Using the mcp__playwright__browser_drag tool
+async function testDragAndDrop() {
+  // Navigate to the target webpage with drag-and-drop functionality
+  await browser.navigate('https://testautomationpractice.blogspot.com/');
+
+  // Take initial screenshot
+  await browser.takeScreenshot({ filename: 'before-drag-drop.png' });
+
+  // Capture page snapshot to identify elements
+  const snapshot = await browser.snapshot();
+
+  // Perform drag and drop using MCP tool
+  await browser.drag({
+    startElement: 'Draggable element',
+    startRef: '#draggable',
+    endElement: 'Drop target area',
+    endRef: '#droppable'
+  });
+
+  // Wait for animation or state change
+  await browser.waitFor({ time: 1 });
+
+  // Verify the result
+  await browser.takeScreenshot({ filename: 'after-drag-drop.png' });
+
+  // Verify drop was successful
+  const dropSuccess = await browser.evaluate({
+    function: `() => {
+      const droppable = document.querySelector('#droppable');
+      return droppable.textContent.includes('Dropped!') ||
+             droppable.classList.contains('ui-state-highlight');
+    }`
+  });
+
+  return { success: dropSuccess };
+}
+
+// Testing drag and drop in a kanban board
+async function testKanbanDragDrop() {
+  await browser.navigate('https://app.example.com/kanban');
+
+  // Capture initial state
+  await browser.takeScreenshot({ filename: 'kanban-initial.png' });
+
+  // Drag task from "To Do" to "In Progress"
+  await browser.drag({
+    startElement: 'Task card: Implement login feature',
+    startRef: '[data-task-id="123"]',
+    endElement: 'In Progress column',
+    endRef: '[data-column="in-progress"]'
+  });
+
+  // Wait for backend update
+  await browser.waitFor({ time: 2 });
+
+  // Verify the task moved
+  await browser.takeScreenshot({ filename: 'kanban-after-move.png' });
+
+  // Check task is in correct column
+  const taskLocation = await browser.evaluate({
+    function: `() => {
+      const task = document.querySelector('[data-task-id="123"]');
+      const column = task.closest('[data-column]');
+      return column.getAttribute('data-column');
+    }`
+  });
+
+  console.log('Task moved to column:', taskLocation);
+  return taskLocation === 'in-progress';
+}
+
+// Testing sortable lists
+async function testSortableList() {
+  await browser.navigate('https://app.example.com/priorities');
+
+  // Reorder items by dragging
+  await browser.drag({
+    startElement: 'Priority item #3',
+    startRef: '[data-priority="3"]',
+    endElement: 'Priority item #1',
+    endRef: '[data-priority="1"]'
+  });
+
+  await browser.waitFor({ time: 1 });
+
+  // Verify new order
+  const newOrder = await browser.evaluate({
+    function: `() => {
+      const items = document.querySelectorAll('[data-priority]');
+      return Array.from(items).map(item => item.getAttribute('data-priority'));
+    }`
+  });
+
+  console.log('New order:', newOrder);
+  return newOrder;
+}
+
+// Testing drag and drop file uploads
+async function testFileDropUpload() {
+  await browser.navigate('https://app.example.com/upload');
+
+  // Simulate file drag and drop
+  await browser.evaluate({
+    function: `() => {
+      const dropzone = document.querySelector('.dropzone');
+      const file = new File(['test content'], 'test.txt', { type: 'text/plain' });
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+
+      const dragEvent = new DragEvent('drop', {
+        bubbles: true,
+        dataTransfer: dataTransfer
+      });
+
+      dropzone.dispatchEvent(dragEvent);
+    }`
+  });
+
+  await browser.waitFor({ text: 'File uploaded' });
+  await browser.takeScreenshot({ filename: 'file-drop-success.png' });
+}
+
+// Testing drag to resize
+async function testDragToResize() {
+  await browser.navigate('https://app.example.com/editor');
+
+  // Get initial panel width
+  const initialWidth = await browser.evaluate({
+    function: `() => {
+      return document.querySelector('.resizable-panel').offsetWidth;
+    }`
+  });
+
+  // Drag resize handle
+  await browser.drag({
+    startElement: 'Resize handle',
+    startRef: '.resize-handle',
+    endElement: 'Target position',
+    endRef: 'body' // Use coordinates in production
+  });
+
+  // Get new width
+  const newWidth = await browser.evaluate({
+    function: `() => {
+      return document.querySelector('.resizable-panel').offsetWidth;
+    }`
+  });
+
+  console.log(`Panel resized from ${initialWidth}px to ${newWidth}px`);
+  return { initialWidth, newWidth, resized: newWidth !== initialWidth };
+}
+```
+
+### Key Points for Drag and Drop Testing
+
+1. **Element Identification**: Always use the accessibility snapshot first to identify correct element references
+2. **Timing**: Add appropriate waits after drag operations to allow animations and state updates
+3. **Verification**: Always verify the drag operation succeeded by checking element positions or state changes
+4. **Screenshots**: Capture before/after screenshots to document the interaction
+5. **Event Simulation**: For complex scenarios, you may need to simulate drag events using `browser.evaluate()`
+
+### Common Drag and Drop Scenarios
+
+- **Kanban boards**: Moving cards between columns
+- **Sortable lists**: Reordering items in a list
+- **File uploads**: Dragging files into drop zones
+- **Resizable panels**: Dragging handles to resize UI elements
+- **Grid layouts**: Rearranging items in a grid
+- **Tree views**: Moving nodes in hierarchical structures
+- **Calendar events**: Dragging events to different time slots
 
 ## PUPPETEER MCP WORKFLOW (If Available)
 

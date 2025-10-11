@@ -123,7 +123,7 @@ React Native, Flutter, PWAs, mobile optimization, app store deployment, and nati
 
 ### **ux-specialist** ⭐
 **User experience testing expert with AI-powered automation**
-UX/UI testing, accessibility compliance, user interaction flows, visual regression testing using Playwright, Puppeteer, and **Stagehand** for AI-powered natural language automation. Features intelligent bug reproduction, automated issue diagnosis, and context-aware testing. Ensures excellent user experiences through both traditional and AI-enhanced testing methods.
+UX/UI testing, accessibility compliance, user interaction flows, visual regression testing using Playwright, Puppeteer, and **Stagehand** for AI-powered natural language automation. Features intelligent bug reproduction, automated issue diagnosis, context-aware testing, and **drag-and-drop testing** for interactive UI elements (kanban boards, sortable lists, resizable panels). Ensures excellent user experiences through both traditional and AI-enhanced testing methods.
 
 ### **accessibility-champion**
 **Inclusive design specialist**
@@ -346,6 +346,8 @@ The `ux-specialist` now includes Stagehand for AI-powered browser automation:
 - AI-powered visual regression detection
 - Context-aware form filling and validation
 - Hybrid testing combining AI with traditional automation
+- **Drag-and-drop testing** for interactive UI elements using Playwright's `dragTo()` method
+- Comprehensive testing patterns for kanban boards, sortable lists, file uploads, and resizable panels
 
 ---
 
