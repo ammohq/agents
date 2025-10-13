@@ -67,9 +67,9 @@ Comprehensive Django admin patterns including raw_id_fields, autocomplete_fields
 **Ultimate Django Unfold admin interface expert**
 Master of Django Unfold's modern Tailwind-powered admin with dynamic navigation, conditional fields, custom dashboards, and rich components. Creates beautiful, production-ready admin interfaces with advanced UX patterns.
 
-### **celery-specialist**
-**Django + Celery integration master**
-Expert in Celery task patterns, Beat scheduling, django-celery-beat, idempotency, retries, error handling, and monitoring. Includes image processing tasks and async workflows.
+### **celery-specialist** ⭐
+**Django + Celery integration master with production best practices**
+Expert in production-hardened Celery patterns: idempotent tasks, retry strategies with exponential backoff and jitter, I/O vs CPU worker pool configuration, distributed locking, result backend optimization, and comprehensive monitoring. Includes Beat scheduling, django-celery-beat, task routing, error handling, circuit breakers, and async workflows. Implements industry-proven patterns for zero-downtime task processing.
 
 ### **redis-specialist**
 **Django + Redis caching and data structures expert**
