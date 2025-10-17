@@ -757,6 +757,306 @@ def _build_incident(incident_id, stage, root_cause, recommended_fix, severity, r
     }
 ```
 
+## DOCKER COMPOSE BEST PRACTICES FOR COOLIFY
+
+**CRITICAL**: Understanding Traefik's automatic service exposure is essential to avoid security vulnerabilities and routing conflicts.
+
+### Traefik Service Exposure Rules
+
+Coolify uses Traefik as a reverse proxy. **By default, Traefik automatically exposes ALL services that have a `build:` directive in docker-compose files**, even if you don't explicitly configure Traefik labels.
+
+**This means**:
+- ✅ Services with `build:` → Automatically get Traefik routing
+- ✅ Services from images only (no `build:`) → Not exposed unless labeled
+- ⚠️ Backend APIs, databases, workers with `build:` → **Publicly exposed unless disabled**
+
+### Internal Service Protection (REQUIRED)
+
+Any service that should NOT be publicly accessible MUST explicitly disable Traefik:
+
+```yaml
+services:
+  # ❌ WRONG - Backend will be publicly exposed
+  backend:
+    build: ./backend
+    # Missing traefik.enable=false → PUBLIC!
+
+  # ✅ CORRECT - Backend is internal only
+  backend:
+    build: ./backend
+    labels:
+      - "traefik.enable=false"  # REQUIRED for internal services
+```
+
+**Services requiring `traefik.enable=false`**:
+- Backend APIs (Django, FastAPI, Express, etc.)
+- Databases (PostgreSQL, MySQL, MongoDB, etc.)
+- Cache servers (Redis, Memcached, etc.)
+- Message queues (RabbitMQ, Kafka, etc.)
+- Worker processes (Celery, Sidekiq, etc.)
+- Any service not meant for direct public access
+
+### Entry Point Configuration
+
+**Only ONE service** should be publicly accessible - typically your reverse proxy or frontend:
+
+```yaml
+services:
+  # ✅ Public-facing entry point (nginx, caddy, or frontend)
+  nginx:
+    build: ./nginx
+    labels:
+      - "traefik.enable=true"  # Explicitly public
+      - "traefik.http.routers.app.rule=Host(`example.com`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.app.loadbalancer.server.port=80"
+
+  # ✅ Internal backend - NOT exposed
+  backend:
+    build: ./backend
+    labels:
+      - "traefik.enable=false"
+
+  # ✅ Internal database - NOT exposed
+  db:
+    image: postgres:16
+    # No build directive → not exposed by default
+```
+
+### Port Mappings (Production vs Development)
+
+**Production (Coolify)**:
+```yaml
+# ❌ WRONG - Never map ports in production
+services:
+  backend:
+    ports:
+      - "8000:8000"  # Conflicts with Traefik!
+```
+
+**Correct Production**:
+```yaml
+# ✅ CORRECT - Let Traefik handle routing
+services:
+  nginx:
+    build: ./nginx
+    labels:
+      - "traefik.http.services.app.loadbalancer.server.port=80"
+    # No ports: declaration!
+```
+
+**Development (Local)**:
+```yaml
+# ✅ OK for local development only
+services:
+  backend:
+    ports:
+      - "8000:8000"  # Fine for localhost testing
+```
+
+### Network Configuration
+
+**NEVER use custom Docker networks in Coolify** - this is the #1 cause of Gateway timeout errors.
+
+```yaml
+# ❌ WRONG - Custom networks cause 504 errors
+networks:
+  custom_network:
+    driver: bridge
+
+services:
+  app:
+    networks:
+      - custom_network  # Proxy isolation → timeouts after hours/days!
+```
+
+**Correct Approach**:
+```yaml
+# ✅ CORRECT - Use Coolify Destinations
+services:
+  app:
+    # No networks: declaration
+    # Coolify manages networking automatically
+```
+
+**For network isolation**: Configure Destinations in Coolify UI, not in docker-compose.
+
+### Complete Example: Multi-Container App
+
+```yaml
+version: '3.8'
+
+services:
+  # Entry point - PUBLIC
+  nginx:
+    build: ./nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`example.com`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.app.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Backend API - INTERNAL
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=false"  # REQUIRED - prevent public exposure
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db:5432/app
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Worker - INTERNAL
+  worker:
+    build: ./backend
+    command: celery -A app worker
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=false"  # REQUIRED - prevent public exposure
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db:5432/app
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+
+  # Database - INTERNAL (image-based, no build)
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=app
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    # No traefik.enable needed - no build directive
+
+  # Cache - INTERNAL (image-based, no build)
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # No traefik.enable needed - no build directive
+
+volumes:
+  db_data:
+
+# ❌ NO custom networks!
+```
+
+### Security Checklist for Docker Compose
+
+Before deploying to Coolify:
+
+- [ ] Only ONE service has `traefik.enable=true` (entry point)
+- [ ] ALL services with `build:` directives have `traefik.enable=false` (except entry point)
+- [ ] NO `ports:` declarations (let Traefik handle routing)
+- [ ] NO custom `networks:` configuration
+- [ ] Environment variables use Coolify secrets, not hardcoded values
+- [ ] Health checks defined for all critical services
+- [ ] `restart: unless-stopped` for production services
+- [ ] Database passwords use `${ENV_VAR}` from Coolify
+
+### Common Mistakes & Fixes
+
+#### Mistake 1: Exposing Backend with Build
+```yaml
+# ❌ Backend is PUBLIC due to build: directive
+backend:
+  build: ./backend  # Auto-exposed!
+```
+
+**Fix**:
+```yaml
+# ✅ Explicitly disable Traefik
+backend:
+  build: ./backend
+  labels:
+    - "traefik.enable=false"
+```
+
+#### Mistake 2: Multiple Public Services
+```yaml
+# ❌ Both nginx AND backend are public
+nginx:
+  build: ./nginx  # Public
+backend:
+  build: ./backend  # Also public!
+```
+
+**Fix**:
+```yaml
+# ✅ Only nginx is public
+nginx:
+  build: ./nginx
+  labels:
+    - "traefik.enable=true"
+
+backend:
+  build: ./backend
+  labels:
+    - "traefik.enable=false"
+```
+
+#### Mistake 3: Port Mapping Conflicts
+```yaml
+# ❌ Conflicts with Traefik on ports 80/443
+nginx:
+  ports:
+    - "80:80"
+```
+
+**Fix**:
+```yaml
+# ✅ Let Traefik handle ports
+nginx:
+  labels:
+    - "traefik.http.services.app.loadbalancer.server.port=80"
+  # No ports: declaration
+```
+
+### Quick Decision Matrix
+
+**Should this service be exposed?**
+
+| Service Type | Has `build:`? | Traefik Label | Reason |
+|--------------|---------------|---------------|---------|
+| nginx/caddy  | ✅ Yes        | `traefik.enable=true` | Entry point |
+| Frontend (React/Vue) | ✅ Yes | `traefik.enable=true` | Public assets |
+| Backend API  | ✅ Yes        | `traefik.enable=false` | Internal only |
+| Worker/Celery| ✅ Yes        | `traefik.enable=false` | Background tasks |
+| Database     | ❌ No (image) | Not needed | Not exposed |
+| Redis/Cache  | ❌ No (image) | Not needed | Not exposed |
+
+### Validation Command
+
+Before deploying, validate your compose file:
+
+```bash
+# Check for common mistakes
+grep -r "build:" docker-compose.yaml  # List all services with build
+grep -r "traefik.enable=false" docker-compose.yaml  # Verify internal services disabled
+grep -r "ports:" docker-compose.yaml  # Should be empty for production
+grep -r "networks:" docker-compose.yaml  # Should be empty for production
+```
+
 ## DEPLOYMENT PATTERNS
 
 ### Application Deployment

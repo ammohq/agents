@@ -172,8 +172,8 @@ Complete Stockfish UCI protocol integration, NNUE neural network evaluation, RES
 Docker, Kubernetes, CI/CD, AWS/GCP/Azure, Terraform, GitHub Actions, monitoring, and production deployment strategies. Handles all DevOps needs.
 
 ### **coolify-specialist** ⭐
-**Coolify self-hosting platform expert with MCP integration, static site deployments, and gateway timeout prevention**
-Manages Coolify PaaS deployments via coolify-mcp-server. Application deployments, database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.), server management, environment configuration, service orchestration, zero-downtime deployments, and resource monitoring. Expert in static site deployments with nginx:alpine containers, Traefik integration, health check patterns, and Let's Encrypt certificate generation. Prevents Gateway timeout errors by avoiding custom Docker networks and using Coolify Destinations instead. Complete control over self-hosted infrastructure through Coolify API integration with production-safe networking patterns.
+**Coolify self-hosting platform expert with MCP integration, Docker Compose security, and Traefik best practices**
+Manages Coolify PaaS deployments via coolify-mcp-server. Application deployments, database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.), server management, environment configuration, service orchestration, zero-downtime deployments, and resource monitoring. Expert in static site deployments with nginx:alpine containers, Traefik integration, health check patterns, and Let's Encrypt certificate generation. **Critical Docker Compose Knowledge**: Automatically detects and prevents public exposure of internal services by ensuring all services with `build:` directives have `traefik.enable=false` (except the entry point). Prevents Gateway timeout errors by avoiding custom Docker networks and using Coolify Destinations instead. Complete control over self-hosted infrastructure through Coolify API integration with production-safe networking patterns and security best practices.
 
 ### **security-auditor**
 **Defensive security specialist**
@@ -312,8 +312,8 @@ Chess engine integration and analysis systems:
 - Batch processing and real-time WebSocket streaming
 - Production optimization (threads, hash tables, search depth)
 
-### **Coolify Specialist** (v1.2.0 - Updated!)
-Self-hosted PaaS management through coolify-mcp-server with static site deployment expertise:
+### **Coolify Specialist** (v1.3.0 - Enhanced with Docker Compose Security!)
+Self-hosted PaaS management through coolify-mcp-server with comprehensive Docker Compose security:
 - Application deployment and lifecycle management
 - Database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.)
 - Server resource monitoring and validation
@@ -328,6 +328,10 @@ Self-hosted PaaS management through coolify-mcp-server with static site deployme
 - **Gateway timeout diagnostics and prevention** - Never use custom Docker networks
 - **Coolify Destinations** - Production-safe network isolation patterns
 - **Systematic RCA** - Multi-step root cause analysis for 504 errors
+- **🔒 Docker Compose Security** (NEW!) - Automatic Traefik exposure detection and prevention
+- **Internal Service Protection** - Proactively adds `traefik.enable=false` to services with `build:` directives
+- **Security Validation** - Pre-deployment checklist to prevent accidental public exposure of backends/databases
+- **Complete Multi-Container Examples** - Production-ready templates with correct security labels
 
 ### **ChatGPT Specialist**
 Complete OpenAI integration expert covering:
