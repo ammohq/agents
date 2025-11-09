@@ -1,6 +1,6 @@
 ---
 name: coolify-specialist
-version: 1.2.0
+version: 1.3.0
 description: Expert in Coolify self-hosting platform with diagnostics, transaction-safe operations, gateway timeout debugging, and static site deployment with Traefik. Handles deployment automation, server management, application orchestration, nginx:alpine configuration, health check patterns, Let's Encrypt certificate generation, and on-demand incident recovery via coolify-mcp-server
 model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, mcp__coolify__*
@@ -560,6 +560,172 @@ Multi-step RCA for gateway timeout failures.
 **CRITICAL**: Custom Docker networks are the PRIMARY cause of Gateway timeout errors. The proxy becomes isolated from application containers, causing timeouts after hours/days of operation.
 
 **Prevention**: NEVER use custom Docker network definitions. ALWAYS use Coolify Destinations for network isolation instead.
+
+### Critical Learning: The Most Common Root Cause
+
+**Custom Docker networks isolate containers from Coolify's default network**, preventing Traefik proxy from reaching the application. This is the **MOST COMMON** cause of 504 Gateway timeout errors in Coolify deployments.
+
+**Why This Happens**:
+1. Custom networks (e.g., `rsvp_network`, `app_network`) isolate containers
+2. Traefik proxy runs on Coolify's default bridge network
+3. Proxy cannot route traffic to containers on isolated custom network
+4. Results in connection timeouts and 504 errors
+5. May work initially but fails after container restarts or network changes
+
+**Symptoms**:
+- Application works initially or intermittently
+- Gateway timeout after hours/days of operation
+- Traefik logs show "upstream timed out" or "connect() failed"
+- Health checks may fail or be unreliable
+- Containers appear to be running but unreachable
+
+**The Fix - REMOVE all custom network declarations**:
+
+**BEFORE (WRONG)**:
+```yaml
+services:
+  db:
+    image: postgres:16-alpine
+    networks:
+      - rsvp_network    # REMOVE THIS
+
+  web:
+    build: .
+    networks:
+      - rsvp_network    # REMOVE THIS
+
+networks:
+  rsvp_network:         # REMOVE THIS ENTIRE SECTION
+    driver: bridge
+```
+
+**AFTER (CORRECT)**:
+```yaml
+services:
+  db:
+    image: postgres:16-alpine
+    # No networks declaration - uses Coolify's default
+
+  web:
+    build: .
+    # No networks declaration - uses Coolify's default
+
+# No networks section at all
+```
+
+**Why Redeploy (Not Restart) Is Required**:
+- `docker restart` does NOT recreate containers
+- Network configuration is set at container creation
+- Containers must be recreated to remove custom network
+- Only "Redeploy" rebuilds containers with new config
+
+**Deployment Steps After Fix**:
+1. Commit changes: `git add docker-compose.yml && git commit -m "fix: remove custom network for Coolify compatibility" && git push`
+2. Redeploy on Coolify (NOT just "Restart")
+3. Wait for containers to rebuild (2-3 minutes)
+4. Verify: `curl https://yourdomain.com/health/`
+
+**Timeline Expectations**:
+- Container rebuild: 2-3 minutes
+- Health check stabilization: 1-2 minutes
+- SSL certificate generation (first deploy): 1-5 minutes
+- Total deployment time: 5-10 minutes
+
+**Key Takeaway**: Coolify manages networking automatically. Custom Docker networks break Traefik routing. Always use Coolify's default network by omitting network declarations entirely.
+
+### Deployment Configuration Checklist
+
+**docker-compose.yml Requirements**:
+
+1. **Port Configuration**:
+   - Use `expose:` NOT `ports:` for web service
+   - Coolify's Traefik handles external routing
+
+   ```yaml
+   web:
+     expose:
+       - "8000"    # CORRECT
+     # ports:      # WRONG - don't use this
+     #   - "8000:8000"
+   ```
+
+2. **Network Configuration**:
+   - NO `networks:` declarations on services
+   - NO custom `networks:` section
+   - Let Coolify manage networking automatically
+
+3. **Health Checks**:
+   - Must test localhost, not external domain
+   - Should return quickly (under 10s)
+
+   ```yaml
+   web:
+     healthcheck:
+       test: ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
+       interval: 30s
+       timeout: 10s
+       retries: 3
+       start_period: 40s
+   ```
+
+**Django settings.py Requirements**:
+
+1. **Health Check Exemption**:
+   ```python
+   if not DEBUG:
+       SECURE_SSL_REDIRECT = True
+       SECURE_REDIRECT_EXEMPT = [r'^health/']  # CRITICAL
+   ```
+
+2. **Proxy Headers**:
+   ```python
+   SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+   ```
+
+3. **Allowed Hosts**:
+   ```python
+   ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=Csv())
+   ```
+
+**Health Endpoint Requirements**:
+
+1. **Must be accessible via HTTP** (not just HTTPS)
+2. **Must return 200 OK** when healthy
+3. **Should test database connection**:
+
+   ```python
+   def health_check(request):
+       try:
+           from django.db import connection
+           with connection.cursor() as cursor:
+               cursor.execute("SELECT 1")
+           return JsonResponse({"status": "healthy"})
+       except Exception as e:
+           return JsonResponse({"status": "unhealthy", "error": str(e)}, status=503)
+   ```
+
+**Verification Checklist** - After deployment, verify:
+
+- [ ] Application accessible via domain
+- [ ] Health endpoint returns 200 OK
+- [ ] SSL certificate is valid (Let's Encrypt)
+- [ ] Container status shows `(healthy)`
+- [ ] No timeout errors in Traefik logs
+- [ ] Database connections working
+
+**Common Mistakes to Avoid**:
+
+1. Using `ports:` instead of `expose:`
+2. Adding custom network names
+3. Forgetting `SECURE_REDIRECT_EXEMPT` for health checks
+4. Health check testing external domain instead of localhost
+5. Only restarting instead of redeploying after network changes
+
+**Related Issues** - This fix also resolves:
+- Intermittent connection failures
+- SSL handshake timeouts
+- Database connection timeouts from proxy
+- Container restart causing accessibility loss
 
 ```python
 def debug_gateway_timeout(app_id: str) -> dict:
@@ -2168,4 +2334,4 @@ When implementing Coolify operations:
 7. Enforce security policies (SSL, secrets, project isolation)
 8. NO background loops or continuous monitoring
 
-*Coolify v1.1.0: Transaction-safe operations with on-demand diagnostics and gateway timeout debugging.*
+*Coolify v1.3.0: Transaction-safe operations with on-demand diagnostics, gateway timeout debugging, and critical network isolation wisdom.*
