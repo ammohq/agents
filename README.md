@@ -10,6 +10,7 @@ agents/
 ├── backend/          # Backend infrastructure and services (10 agents)
 ├── frontend/         # Frontend and UI specialists (5 agents)
 ├── ai/               # AI and machine learning specialists (2 agents)
+├── api-endpoints/    # Third-party API integration specialists (1 agent)
 ├── testing/          # Testing, debugging, and quality (5 agents)
 ├── devops/           # DevOps and infrastructure (4 agents)
 ├── utilities/        # General utilities and orchestration (5 agents)
@@ -165,6 +166,12 @@ Complete OpenAI Python SDK integration (sync/async), Django + Celery patterns, s
 **Stockfish chess engine integration expert**
 Complete Stockfish UCI protocol integration, NNUE neural network evaluation, REST API development (FastAPI/Django), python-chess library mastery, Docker/Kubernetes deployment, Syzygy tablebase configuration, analysis caching strategies, and performance optimization. Expert in position analysis, best move calculation, batch processing, real-time streaming, and production chess analysis systems with horizontal scaling.
 
+## 🔌 API Integration Specialists
+
+### **bloxs-api-specialist**
+**Bloxs.io property management API integration expert**
+Python/Django integration specialist for the Bloxs API. Expert in property management data models including entities, leases, financials, tasks, and cases. Consults live documentation at https://www.bloxs.io/apidocs/ and local bloxs_docs.jsonl files. Implements robust error handling, authentication patterns, and comprehensive testing for Bloxs integrations. Handles pagination, rate limiting, and API versioning correctly.
+
 ## 🛠️ Infrastructure & Operations
 
 ### **devops-engineer**
@@ -197,7 +204,7 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 
 ### For Immediate Issues:
 - **Bug reports**: `debugger-detective`
-- **Performance problems**: `performance-analyzer`  
+- **Performance problems**: `performance-analyzer`
 - **UI/UX issues**: `ux-specialist` (with Stagehand AI) or `frontend-specialist`
 - **Django/API problems**: `django-specialist` or `django-rest-framework-specialist` for DRF-specific issues
 - **DRF serializer/ViewSet issues**: `django-rest-framework-specialist`
@@ -209,12 +216,14 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 - **Security concerns**: `security-auditor`
 - **AI/ChatGPT integration**: `chatgpt-specialist`
 - **Chess engine integration**: `stockfish-specialist`
+- **Bloxs API integration**: `bloxs-api-specialist`
 
 ### For Development Tasks:
 - **New features**: `full-stack-coder` or domain-specific specialist
 - **Frontend components**: `frontend-specialist`
 - **Database design**: `database-architect`
 - **API endpoints**: `django-rest-framework-specialist` for DRF-specific, `django-specialist` for full-stack, or `api-designer` for multi-protocol
+- **Third-party API integrations**: API endpoint specialists (e.g., `bloxs-api-specialist`)
 - **Admin interfaces**: `django-admin-specialist` or `django-unfold-admin-specialist`
 - **Image handling**: `file-storage-specialist` with Pillow processing
 - **Background tasks**: `celery-specialist`
@@ -225,6 +234,7 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 - **AI features**: `chatgpt-specialist` for OpenAI/ChatGPT integration
 - **Chess applications**: `stockfish-specialist` for engine integration
 - **Natural language testing**: `ux-specialist` with Stagehand
+- **Property management systems**: `bloxs-api-specialist` for Bloxs.io integration
 
 ### For Complex Projects:
 - **Multi-domain tasks**: `orchestrator-agent`
