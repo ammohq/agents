@@ -9,7 +9,7 @@ agents/
 ├── django/           # Django framework specialists (7 agents)
 ├── backend/          # Backend infrastructure and services (10 agents)
 ├── frontend/         # Frontend and UI specialists (5 agents)
-├── ai/               # AI and machine learning specialists (2 agents)
+├── ai/               # AI and machine learning specialists (3 agents)
 ├── api-endpoints/    # Third-party API integration specialists (1 agent)
 ├── testing/          # Testing, debugging, and quality (5 agents)
 ├── devops/           # DevOps and infrastructure (4 agents)
@@ -166,6 +166,10 @@ Complete OpenAI Python SDK integration (sync/async), Django + Celery patterns, s
 **Stockfish chess engine integration expert**
 Complete Stockfish UCI protocol integration, NNUE neural network evaluation, REST API development (FastAPI/Django), python-chess library mastery, Docker/Kubernetes deployment, Syzygy tablebase configuration, analysis caching strategies, and performance optimization. Expert in position analysis, best move calculation, batch processing, real-time streaming, and production chess analysis systems with horizontal scaling.
 
+### **vectrex-specialist** ⭐
+**Vectrex game development and 6809 assembly expert**
+Complete Motorola 6809 assembly programming, CMOC C cross-compiler, VIDE IDE, vector graphics programming, and retro game design for the GCE Vectrex vector display system. Expert in BIOS routines, AY-3-8912 PSG sound programming, joystick input handling, collision detection, and game loop architecture. Implements complete games with scaling sprites, animation, particle systems, and optimized performance. Covers ROM cartridge creation, ParaJVE/MAME emulation, and real hardware deployment.
+
 ## 🔌 API Integration Specialists
 
 ### **bloxs-api-specialist**
@@ -233,6 +237,7 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 - **Static site deployments**: `coolify-specialist` with nginx:alpine + Traefik
 - **AI features**: `chatgpt-specialist` for OpenAI/ChatGPT integration
 - **Chess applications**: `stockfish-specialist` for engine integration
+- **Vectrex games**: `vectrex-specialist` for retro vector display game development
 - **Natural language testing**: `ux-specialist` with Stagehand
 - **Property management systems**: `bloxs-api-specialist` for Bloxs.io integration
 
@@ -311,7 +316,21 @@ The repository includes comprehensive templates and guidelines for creating new 
 
 ## 🌟 Latest Additions
 
-### **Stockfish Specialist** (New!)
+### **Vectrex Specialist** (New!)
+Complete retro game development for GCE Vectrex vector display system:
+- Motorola 6809 assembly programming with full instruction set reference
+- CMOC C cross-compiler with inline assembly integration
+- VIDE IDE project management and debugging workflows
+- Complete BIOS routine reference with addresses and parameters
+- Vector graphics programming (scaling, animation, particle systems)
+- AY-3-8912 PSG sound chip programming (music and sound effects)
+- Joystick input handling with analog and digital support
+- Complete game loop examples with collision detection
+- ROM cartridge creation and memory layout
+- ParaJVE/MAME emulator configuration and testing
+- 1000+ lines with authentic code examples and technical details
+
+### **Stockfish Specialist**
 Chess engine integration and analysis systems:
 - Complete UCI protocol communication with python-chess
 - NNUE neural network evaluation (10-50x faster than traditional)
