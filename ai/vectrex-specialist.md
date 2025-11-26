@@ -329,51 +329,36 @@ CWAI    #$00        ; Clear CC bits and wait for interrupt
 
 ```asm
 ; vectrex_init.asm - Standard Vectrex cartridge initialization
-; ROM must be 8KB, 16KB, 32KB, or 64KB
+; ROM must be 4KB, 8KB, 16KB, or 32KB (padded with $FF)
 ; Start address must be at $0000 (cartridge ROM space)
 
         ORG     $0000           ; Cartridge ROM starts here
 
-; ROM Header (required by Vectrex BIOS)
+; ROM Header (CRITICAL: must use exact format below)
 ROMHeader:
-        FCB     "g"             ; Copyright byte (must be lowercase 'g')
-        FDB     MusicData       ; Pointer to music data
-        FDB     $F850           ; Text height, width ($F8=height, $50=width)
-        FDB     $30             ; Text height
-        FDB     $80             ; Text width
-        FCS     /MY GAME/       ; Game title (FCS = Form Constant String with high bit)
-        FCB     $80             ; End of string with high bit set
+        FCC     "g GCE 2025"    ; Copyright STRING (NOT just $67!)
+        FCB     $80             ; String terminator
+        FDB     $FD0D           ; BIOS silent music (MUST use this value!)
+        FCB     $F8,$50,$20,$D0 ; Height, width, Y, X for title display
+        FCC     "MY GAME"       ; Game title
+        FCB     $80             ; Title terminator
+        FCB     $00             ; Header end marker
 
-; Music data (silent by default)
-MusicData:
-        FCB     $00             ; Duration
-        FCB     $80             ; End of music
-
-; Cold start vector - BIOS jumps here on reset
-ColdStart:
-        ; Initialize stack pointer
-        LDS     #$CBEA          ; System stack (grows down from $CBEA)
-        LDU     #$C880          ; User stack (typically $C880)
-
-        ; Set direct page to zero page ($C8)
+; Entry point - BIOS jumps here after header
+Entry:
         LDA     #$C8
-        TFR     A,DP
-
-        ; Initialize BIOS
-        JSR     $F000           ; Cold start BIOS initialization
-
-        ; Calibrate zero reference
-        JSR     $F192           ; Intensity to A, reset integrators
+        TFR     A,DP            ; Set direct page (REQUIRED)
 
         ; Your game initialization
-        JSR     GameInit
+        JSR     >GameInit       ; Use > for extended addressing!
 
 ; Main game loop
 MainLoop:
-        JSR     $F192           ; Wait for frame, reset beam (60 Hz)
-        JSR     GameUpdate      ; Update game logic
-        JSR     GameDraw        ; Draw vectors
-        BRA     MainLoop        ; Loop forever
+        JSR     $F192           ; Wait_Recal (REQUIRED every frame)
+        JSR     $F354           ; Reset0Ref - reset beam to center
+        JSR     >GameUpdate     ; Use > for extended addressing!
+        JSR     >GameDraw       ; Use > for extended addressing!
+        JMP     >MainLoop       ; MUST use > prefix!
 
 ; Game initialization
 GameInit:
@@ -1534,9 +1519,10 @@ Snippet: game_loop
 ---
 MainLoop:
     JSR     $F192       ; Wait_Recal
-    JSR     GameUpdate
-    JSR     GameDraw
-    BRA     MainLoop
+    JSR     $F354       ; Reset0Ref
+    JSR     >GameUpdate
+    JSR     >GameDraw
+    JMP     >MainLoop   ; Extended addressing!
 
 Snippet: vector_draw
 ---
@@ -2021,15 +2007,14 @@ Full working game example with initialization, frame sync, input, drawing, and g
 
         ORG     $0000
 
-; ROM Header
-        FCB     "g"
-        FDB     BGMusic
-        FDB     $F850,$30,$80
-        FCS     /SPACE WARRIOR/
+; ROM Header (CRITICAL: use exact format)
+        FCC     "g GCE 2025"
         FCB     $80
-
-BGMusic:
-        FCB     $00,$80
+        FDB     $FD0D           ; BIOS silent music (required!)
+        FCB     $F8,$50,$20,$D0
+        FCC     "SPACE WARRIOR"
+        FCB     $80
+        FCB     $00             ; Header end marker
 
 ; Constants
 MAX_BULLETS     EQU     8
@@ -2110,22 +2095,22 @@ MainLoop:
         CMPA    #STATE_GAME_OVER
         BEQ     DoGameOver
 
-        BRA     MainLoop
+        JMP     >MainLoop       ; Use extended addressing!
 
 DoTitle:
-        JSR     UpdateTitle
-        JSR     DrawTitle
-        BRA     MainLoop
+        JSR     >UpdateTitle
+        JSR     >DrawTitle
+        JMP     >MainLoop       ; Use extended addressing!
 
 DoPlaying:
-        JSR     UpdateGame
-        JSR     DrawGame
-        BRA     MainLoop
+        JSR     >UpdateGame
+        JSR     >DrawGame
+        JMP     >MainLoop       ; Use extended addressing!
 
 DoGameOver:
-        JSR     UpdateGameOver
-        JSR     DrawGameOver
-        BRA     MainLoop
+        JSR     >UpdateGameOver
+        JSR     >DrawGameOver
+        JMP     >MainLoop       ; Use extended addressing!
 
 ; Game initialization
 GameInit:

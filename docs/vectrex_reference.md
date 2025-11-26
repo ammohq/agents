@@ -73,6 +73,31 @@ The agent must respect these rules in all code:
 8. ROM must start at `$0000` and include a valid header (copyright string `"g GCE YEAR"` + terminator).
 9. ROM should be padded to a valid size (4 KB, 8 KB, 16 KB, 32 KB) with `$FF`.
 10. Do NOT add CPU vector tables - the BIOS handles entry from the header.
+11. **ALWAYS use extended addressing (`>`) for JMP/JSR to ROM labels** - see Section 2.1.
+
+---
+
+## 2.1 Direct Page Addressing Bug (CRITICAL)
+
+When DP=$C8, the assembler may use direct page addressing for labels at addresses < $100. This causes jumps to go to $C8xx (RAM) instead of $00xx (ROM).
+
+```asm
+; WRONG - assembler generates $0E $1B (JMP direct page)
+; With DP=$C8, this jumps to $C81B (RAM) not $001B (ROM)
+JMP     Loop            ; Loop is at address $001B
+BRA     Loop            ; also problematic for some assemblers
+
+; CORRECT - force extended addressing with '>'
+JMP     >Loop           ; generates $7E $00 $1B (JMP extended)
+JSR     >DrawPath       ; also force extended for subroutine calls
+```
+
+**Rule**: Always use `JMP >label` and `JSR >label` for any label in the ROM code area (addresses < $100).
+
+**Symptoms of this bug:**
+* Game flickers once then goes black
+* Code runs briefly then crashes
+* Debugger shows jumps to $C8xx addresses
 
 ---
 
@@ -85,25 +110,36 @@ The agent must respect these rules in all code:
 
         FCC     "g GCE 2025"    ; copyright string (g + space + GCE + space + year)
         FCB     $80             ; string terminator
-        FDB     MusicData       ; pointer to music data
+        FDB     $FD0D           ; BIOS silent music pointer (CRITICAL: use this directly!)
         FCB     $F8,$50,$20,$D0 ; height, width, rel Y, rel X for title display
         FCC     "GAME TITLE"    ; game title shown on startup
         FCB     $80             ; title terminator
         FCB     $00             ; header end marker
-
-MusicData:
-        FCB     $C8,$20,$00     ; minimal music header
-        FCB     $01,$01,$01     ; music data
-        FCB     $80             ; music end
 ```
 
 ### Key Header Details
 
 * Copyright is a STRING `"g GCE YEAR"` not just byte `$67`
 * Must include `$80` terminator after copyright string
+* **Music pointer MUST be `$FD0D`** - this points to BIOS silent music
 * Display params are 4 separate bytes, not FDB words
 * Header ends with `$00` byte
-* Music data format requires the specific header bytes shown
+* Code execution begins immediately after the `$00` marker
+
+### Music Pointer (CRITICAL)
+
+Always use `$FD0D` directly for silent BIOS music:
+
+```asm
+; WRONG - causes title screen to hang
+FDB     MusicData       ; pointer to custom data
+...
+MusicData:
+    FDB     $FD0D       ; this format is incorrect
+
+; CORRECT
+FDB     $FD0D           ; direct BIOS silent music pointer
+```
 
 ### Important: No Vector Table Needed
 
@@ -123,35 +159,29 @@ This is the canonical "hello Vectrex" template used by the agent.
 
         FCC     "g GCE 2025"
         FCB     $80
-        FDB     MusicData
+        FDB     $FD0D           ; BIOS silent music (CRITICAL!)
         FCB     $F8,$50,$20,$D0
         FCC     "HELLO WORLD"
         FCB     $80
         FCB     $00
 
-MusicData:
-        FCB     $C8,$20,$00
-        FCB     $01,$01,$01
-        FCB     $80
-
-ColdStart:
+Entry:
         LDA     #$C8
         TFR     A,DP
-        LDS     #$CBEA
-        LDU     #$C880
 
 MainLoop:
         JSR     $F192           ; Wait_Recal
+        JSR     $F354           ; Reset0Ref - reset beam to center
 
         LDA     #$7F
         JSR     $F2AB           ; Intensity_a
 
-        LDA     #$30            ; Y position
-        LDB     #$E0            ; X position
-        LDX     #TextHello
-        JSR     $F495           ; Print_Str_d
+        LDU     #TextHello      ; string pointer in U register
+        LDA     #$00            ; Y position
+        LDB     #$C0            ; X position
+        JSR     $F37A           ; Print_Str_xy
 
-        BRA     MainLoop
+        JMP     >MainLoop       ; MUST use extended addressing!
 
 TextHello:
         FCC     "HELLO WORLD"
@@ -160,21 +190,25 @@ TextHello:
         END
 ```
 
-Note: No vector table at end of ROM - the BIOS handles entry point detection from header.
+**Critical Notes:**
+* Music pointer is `$FD0D` directly (NOT a MusicData label)
+* Use `JMP >MainLoop` with `>` prefix to force extended addressing
+* Use `$F354` (Reset0Ref) after Wait_Recal
+* Use `$F37A` (Print_Str_xy) with string pointer in U register
 
 ---
 
 ## 5. BIOS Routines (Core Subset)
 
-Addresses are in the $E000–$FFFF BIOS region. This list is the primary reference.
+Addresses are in the $E000–$FFFF BIOS region. These are verified working addresses.
 
 ### Frame & Beam
 
 ```text
 $F000  Cold_Start    ; Full BIOS init (called once on boot/reset)
-$F192  Wait_Recal    ; Wait for frame sync + reset integrators
+$F192  Wait_Recal    ; Wait for frame sync + reset integrators (REQUIRED every frame)
+$F354  Reset0Ref     ; Reset beam to center (use after Wait_Recal)
 $F1AA  DP_to_C8      ; Set DP to $C8
-$F1AF  Reset0Ref     ; Reset integrators (center beam)
 ```
 
 ### Intensity & Vector Drawing
@@ -184,24 +218,27 @@ $F2AB  Intensity_a   ; A = intensity (0–$7F)
 $F2B5  Intensity_5F  ; Medium intensity
 $F2BC  Intensity_7F  ; Max intensity
 
-$F373  Moveto_d      ; A=Y, B=X – absolute move
-$F40E  Draw_Line_d   ; A=ΔY, B=ΔX – draw line from current pos
+$F312  Moveto_d_7F   ; Move beam, A=Y, B=X
+$F40E  Draw_Line_d   ; Draw line, A=Y delta, B=X delta
+$F2C3  Dot_d         ; Draw dot at A,B position
 
 $F3CE  Draw_VL       ; X=list, Y=position, default scale
 $F3AD  Draw_VL_a     ; X=list, Y=position, A=scale
 $F389  Draw_VL_mode  ; X=list, Y=position, A=scale, B=mode
-$F312  Dot_ix_b      ; X=position, B=intensity or small delta (implementation-specific)
 $F35B  Dot_List      ; X=dot list (pairs), $01 terminator
 ```
 
 ### Text
 
 ```text
+$F37A  Print_Str_xy  ; U=string pointer, A=Y, B=X (PREFERRED)
 $F495  Print_Str_d   ; A=Y, B=X, X=string
 $F4A2  Print_Str_yx  ; X=string, Y=position
 $F4B0  Print_List    ; X=list of string pointers
 $F543  Print_Ships_x ; A=number, X=position (formatted)
 ```
+
+**Note**: `Print_Str_xy` ($F37A) uses the U register for the string pointer, not X.
 
 ### Input
 
@@ -514,18 +551,47 @@ OpenEmu uses libretro cores for Vectrex emulation.
 
 ---
 
-## 12. Troubleshooting Checklist
+## 12. Testing Checklist
+
+Before considering a ROM complete, verify:
+
+1. ROM builds without assembler errors
+2. ROM is at least 4KB (padded with $FF)
+3. Title screen appears and advances automatically (with $FD0D music)
+4. Game loop runs continuously without going black
+5. All JMP/JSR to low addresses use `>` prefix for extended addressing
+6. Drawing appears centered (Reset0Ref called after Wait_Recal)
+
+---
+
+## 13. Common Failure Modes
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| "Invalid Vectrex ROM" | Wrong header format | Use `"g GCE 2025"` string, not just `$67` |
+| Stuck at title screen | Bad music pointer | Use `$FD0D` directly, not MusicData label |
+| Flickers once then black | Direct page JMP bug | Use `JMP >label` with `>` prefix |
+| Shows Mine Storm | Invalid header | Check copyright string and terminators |
+| Nothing after title | Code not after header | Ensure code follows `$00` byte |
+| Vectors flicker/incomplete | Too many vectors per frame | Reduce complexity |
+| Off-center display | Missing Reset0Ref | Call `$F354` after Wait_Recal |
+
+---
+
+## 14. Troubleshooting Details
 
 Display issues:
 
 * Black screen:
 
   * Is the ROM header valid? (Must start with `"g GCE YEAR"` string, not just `$67`)
+  * Is music pointer `$FD0D`? (NOT a MusicData label)
   * Is `Wait_Recal` called in the main loop?
   * Is intensity > 0 before drawing?
+  * Are JMP/JSR using extended addressing (`>` prefix)?
 * Off-center or drifting:
 
-  * `Wait_Recal` and/or `Reset0Ref` missing or misused.
+  * `Wait_Recal` and/or `Reset0Ref` ($F354) missing or misused.
 * Flicker:
 
   * Too many vectors per frame; reduce complexity or split across frames.
@@ -533,6 +599,10 @@ Display issues:
 
   * Header is invalid - emulator falls back to built-in game.
   * Check copyright string format and terminators.
+* Flickers once then goes black:
+
+  * Direct page addressing bug - see Section 2.1
+  * Use `JMP >MainLoop` not `JMP MainLoop`
 
 Logic issues:
 
