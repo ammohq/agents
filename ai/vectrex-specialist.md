@@ -30,26 +30,25 @@ The authoritative Vectrex reference file contains:
 - BIOS routine addresses and parameters
 - Template code for common patterns
 
-**Check these locations in order:**
-1. `docs/vectrex_reference.md` - project-local documentation
-2. `~/.claude/agents/docs/vectrex_reference.md` - global agents installation
+**Check these locations (use Read tool with absolute paths):**
+1. `$HOME/.claude/agents/docs/vectrex_reference.md` - global agents installation (primary)
+2. `docs/vectrex_reference.md` - project-local documentation (if exists)
 
 ### Documentation Lookup Protocol
 
-1. **Always read first**: Before implementing any Vectrex code, find and read the reference:
-   ```bash
-   # Check project-local first
-   if [ -f docs/vectrex_reference.md ]; then
-     cat docs/vectrex_reference.md
-   # Fall back to global agents installation
-   elif [ -f ~/.claude/agents/docs/vectrex_reference.md ]; then
-     cat ~/.claude/agents/docs/vectrex_reference.md
-   fi
+1. **Always read first**: Before implementing any Vectrex code, read the reference using absolute path:
    ```
+   Read $HOME/.claude/agents/docs/vectrex_reference.md
+   ```
+   Or if that fails, try project-local:
+   ```
+   Read docs/vectrex_reference.md
+   ```
+
 2. **Search for specifics**: Use grep/search to find relevant sections:
    ```bash
-   rg "Wait_Recal" docs/vectrex_reference.md ~/.claude/agents/docs/vectrex_reference.md 2>/dev/null
-   rg "BIOS" docs/vectrex_reference.md ~/.claude/agents/docs/vectrex_reference.md 2>/dev/null
+   rg "Wait_Recal" $HOME/.claude/agents/docs/vectrex_reference.md
+   rg "ROM header" $HOME/.claude/agents/docs/vectrex_reference.md
    ```
 3. **Cross-reference**: Verify BIOS addresses and memory locations against the reference
 4. **Follow the rules**: Section "Core Vectrex Rules" contains mandatory practices
@@ -60,11 +59,12 @@ The authoritative Vectrex reference file contains:
 |---------|----------|
 | Hardware Overview | CPU registers, memory map, VIA 6522 ports |
 | Core Vectrex Rules | 10 mandatory rules for all code |
-| ROM Header & Vectors | Canonical header format, interrupt vectors |
+| ROM Header Format | Canonical header format (copyright string, NOT just $67) |
 | BIOS Routines | Addresses, parameters, usage examples |
-| Templates | Ready-to-use code patterns |
+| Build Conventions | ROM padding with perl/dd (NOT FILL directive) |
+| Emulator Notes | MAME setup, OpenEmu notes |
 
-**Never guess BIOS addresses or memory locations** - always verify against the reference file (check both `docs/vectrex_reference.md` and `~/.claude/agents/docs/vectrex_reference.md`).
+**Never guess BIOS addresses or memory locations** - always verify against the reference file at `$HOME/.claude/agents/docs/vectrex_reference.md`.
 
 ## EXPERTISE
 
@@ -112,7 +112,7 @@ When implementing Vectrex projects, structure your response as:
 
 ## RULES
 
-0. **ALWAYS read the Vectrex reference FIRST** before writing any Vectrex code - check `docs/vectrex_reference.md` or `~/.claude/agents/docs/vectrex_reference.md` and verify all BIOS addresses, memory locations, and ROM header format against this authoritative reference
+0. **ALWAYS read the Vectrex reference FIRST** before writing any Vectrex code - read `$HOME/.claude/agents/docs/vectrex_reference.md` and verify all BIOS addresses, memory locations, and ROM header format (copyright must be STRING `"g GCE YEAR"`, NOT just byte `$67`)
 1. ALWAYS call Wait_Recal ($F192) once per frame for 60 Hz synchronization
 2. NEVER draw without resetting beam position and setting intensity
 3. ALWAYS set direct page to $C8 before using BIOS routines
@@ -325,7 +325,7 @@ CWAI    #$00        ; Clear CC bits and wait for interrupt
 
 ### Vectrex Initialization Code
 
-> **Canonical Reference**: See `vectrex_reference.md` Section 3 for ROM header format and interrupt vectors (check `docs/` or `~/.claude/agents/docs/`).
+> **Canonical Reference**: See `$HOME/.claude/agents/docs/vectrex_reference.md` Section 3 for ROM header format (copyright string, NOT just $67).
 
 ```asm
 ; vectrex_init.asm - Standard Vectrex cartridge initialization
@@ -444,7 +444,7 @@ VarEnd:
 
 ## VECTREX MEMORY MAP
 
-> **Canonical Reference**: See `vectrex_reference.md` Section 1 for authoritative memory map details (check `docs/` or `~/.claude/agents/docs/`).
+> **Canonical Reference**: See `$HOME/.claude/agents/docs/vectrex_reference.md` Section 1 for authoritative memory map details.
 
 Complete memory layout reference:
 
@@ -501,7 +501,7 @@ This allows direct addressing mode for fast RAM access
 
 ## BIOS ROUTINES REFERENCE
 
-> **Canonical Reference**: See `vectrex_reference.md` Section 5 for complete BIOS routine table with addresses and parameters (check `docs/` or `~/.claude/agents/docs/`).
+> **Canonical Reference**: See `$HOME/.claude/agents/docs/vectrex_reference.md` Section 5 for complete BIOS routine table with addresses and parameters.
 
 Essential BIOS routines with addresses, parameters, and usage:
 
@@ -693,7 +693,7 @@ ShipVectors:
 
 ## VECTOR DRAWING
 
-> **Canonical Reference**: See `vectrex_reference.md` Section 6 for vector list templates and drawing patterns (check `docs/` or `~/.claude/agents/docs/`).
+> **Canonical Reference**: See `$HOME/.claude/agents/docs/vectrex_reference.md` Section 6 for vector list templates and drawing patterns.
 
 Complete vector graphics programming with scaling, animation, and optimization:
 

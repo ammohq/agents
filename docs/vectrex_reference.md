@@ -70,116 +70,97 @@ The agent must respect these rules in all code:
 5. Terminate all strings for BIOS printing with a byte whose high bit is set (e.g. `$80`, or last char OR $80).
 6. Do not exceed user RAM ($C880–$CBEA) for custom variables.
 7. Keep coordinates in the approximate Vectrex range: `-127..+127`.
-8. ROM must start at `$0000` and include a valid header.
-9. Interrupt vectors must be placed at the correct top-of-ROM addresses for the ROM size (e.g. `$7FF0` for 32 KB).
-10. ROM should be padded to a valid size (8 KB, 16 KB, 32 KB, etc.) with `$FF`.
+8. ROM must start at `$0000` and include a valid header (copyright string `"g GCE YEAR"` + terminator).
+9. ROM should be padded to a valid size (4 KB, 8 KB, 16 KB, 32 KB) with `$FF`.
+10. Do NOT add CPU vector tables - the BIOS handles entry from the header.
 
 ---
 
-## 3. ROM Header & Vectors
+## 3. ROM Header Format
 
 ### Canonical ROM Header (Assembly)
 
 ```asm
         ORG     $0000
 
-; ROM header
-        FCB     "g"             ; copyright byte, must be 'g'
-        FDB     MusicData       ; pointer to music data (or $0000 for none)
-        FDB     $F850           ; height/width (standard header value)
-        FDB     $F800           ; height (can be tuned)
-        FDB     $0080           ; width (can be tuned)
-        FCS     /MINI DEMO/     ; game title (high bit set on last char)
-        FCB     $80             ; end title (high bit set)
-```
+        FCC     "g GCE 2025"    ; copyright string (g + space + GCE + space + year)
+        FCB     $80             ; string terminator
+        FDB     MusicData       ; pointer to music data
+        FCB     $F8,$50,$20,$D0 ; height, width, rel Y, rel X for title display
+        FCC     "GAME TITLE"    ; game title shown on startup
+        FCB     $80             ; title terminator
+        FCB     $00             ; header end marker
 
-* Music pointer can be `MusicData` or `$0000` if unused.
-* Title text can be any string; last character’s high bit must be 1.
-
-### Minimal Music Block
-
-```asm
 MusicData:
-        FCB     $00,$80         ; zero-length music, end marker
+        FCB     $C8,$20,$00     ; minimal music header
+        FCB     $01,$01,$01     ; music data
+        FCB     $80             ; music end
 ```
 
-### Top-of-ROM Vectors (32K Example)
+### Key Header Details
 
-```asm
-        ORG     $7FF0
-        FDB     ColdStart       ; RESET vector
-        FDB     $0000           ; SWI3 (unused)
-        FDB     $0000           ; SWI2 (unused)
-        FDB     $0000           ; FIRQ (unused)
-        FDB     $0000           ; IRQ (unused)
-        FDB     $0000           ; SWI (unused)
-        FDB     $0000           ; NMI (unused)
-        FDB     $0000           ; Reserved / not used
-```
+* Copyright is a STRING `"g GCE YEAR"` not just byte `$67`
+* Must include `$80` terminator after copyright string
+* Display params are 4 separate bytes, not FDB words
+* Header ends with `$00` byte
+* Music data format requires the specific header bytes shown
 
-* Adjust `ORG` to match final ROM size:
+### Important: No Vector Table Needed
 
-  * 8 KB: `$1FF0`
-  * 16 KB: `$3FF0`
-  * 32 KB: `$7FF0`
+Unlike standard 6809 systems, Vectrex cartridges do NOT need CPU vector tables:
+* The Vectrex BIOS ROM contains the 6809 CPU vectors at `$FFF0-$FFFF`
+* The BIOS reads the cartridge header and jumps to code immediately after it
+* Do NOT place vectors at `$1FF0`, `$3FF0`, or `$7FF0` - this is incorrect
 
 ---
 
 ## 4. Minimal Assembly Template
 
-This is the canonical “hello Vectrex” template used by the agent.
+This is the canonical "hello Vectrex" template used by the agent.
 
 ```asm
         ORG     $0000
 
-        FCB     "g"
-        FDB     MusicData
-        FDB     $F850
-        FDB     $F800
-        FDB     $0080
-        FCS     /HELLO VECTREX/
+        FCC     "g GCE 2025"
         FCB     $80
+        FDB     MusicData
+        FCB     $F8,$50,$20,$D0
+        FCC     "HELLO WORLD"
+        FCB     $80
+        FCB     $00
 
 MusicData:
-        FCB     $00,$80
+        FCB     $C8,$20,$00
+        FCB     $01,$01,$01
+        FCB     $80
 
 ColdStart:
-        LDS     #$CBEA          ; system stack
-        LDU     #$C880          ; user base/stack
         LDA     #$C8
-        TFR     A,DP            ; DP = $C8
-
-        JSR     $F000           ; BIOS init
+        TFR     A,DP
+        LDS     #$CBEA
+        LDU     #$C880
 
 MainLoop:
-        JSR     $F192           ; Wait_Recal (sync + center)
+        JSR     $F192           ; Wait_Recal
 
-        ; set intensity
         LDA     #$7F
         JSR     $F2AB           ; Intensity_a
 
-        ; print text at (Y=40, X=0)
-        LDA     #$40
-        LDB     #$00
+        LDA     #$30            ; Y position
+        LDB     #$E0            ; X position
         LDX     #TextHello
         JSR     $F495           ; Print_Str_d
 
         BRA     MainLoop
 
 TextHello:
-        FCC     "HELLO"
+        FCC     "HELLO WORLD"
         FCB     $80
 
-        ORG     $7FF0
-        FDB     ColdStart
-        FDB     $0000
-        FDB     $0000
-        FDB     $0000
-        FDB     $0000
-        FDB     $0000
-        FDB     $0000
-        FDB     $0000
+        END
 ```
+
+Note: No vector table at end of ROM - the BIOS handles entry point detection from header.
 
 ---
 
@@ -440,13 +421,20 @@ Preferred modern options:
 * `lwasm` (part of lwtools)
 * `asm6809`
 
-Example `lwasm` usage:
+### Build Process (Assembly)
+
+**Important**: lwasm `--format=raw` does NOT pad ROMs. ROMs must be padded to valid sizes (4KB, 8KB, 16KB, 32KB).
 
 ```sh
-lwasm --format=raw --output=build/game.bin src/main.asm
-```
+# Assemble to raw binary
+lwasm --format=raw --output=build/hello.raw src/hello.asm
 
-Then pad and add vectors as needed, or structure project so vectors are already at the correct location.
+# Create 4KB file filled with $FF
+perl -e 'print "\xff" x 4096' > build/hello.vec
+
+# Overlay raw code at start
+dd if=build/hello.raw of=build/hello.vec conv=notrunc 2>/dev/null
+```
 
 ### CMOC
 
@@ -457,43 +445,67 @@ Then pad and add vectors as needed, or structure project so vectors are already 
 cmoc --vectrex -o build/game.vec src/main.c
 ```
 
-### Makefile Skeleton
+### Makefile Template (Assembly)
 
 ```make
-ROM = build/game.vec
-SRC = src/main.c
+ROM = build/hello.vec
+SRC = src/hello.asm
 
 all: rom
 
 rom: $(SRC)
-\tmkdir -p build
-\tcmoc --vectrex -o $(ROM) $(SRC)
+	@mkdir -p build
+	lwasm --format=raw --output=build/hello.raw $(SRC)
+	perl -e 'print "\xff" x 4096' > $(ROM)
+	dd if=build/hello.raw of=$(ROM) conv=notrunc 2>/dev/null
+	@rm build/hello.raw
+	@echo "ROM built: $(ROM)"
+	@ls -lh $(ROM)
 
 run: rom
-\tmame vectrex -cart $(ROM)
+	mame vectrex -rompath ~/.mame/roms -cart $(ROM) -window
 
 clean:
-\trm -rf build
+	rm -rf build
+
+.PHONY: all rom run clean
 ```
 
 ---
 
-## 11. Emulator Notes (Short)
+## 11. Emulator Notes
 
-### MAME
+### MAME Setup
 
-* Command example:
+MAME requires the Vectrex BIOS ROM to run cartridges.
 
+**Required File:**
+* `exec_rom.bin` (8KB Vectrex executive ROM)
+
+**Installation:**
 ```sh
-mame vectrex -cart build/game.vec
+mkdir -p ~/.mame/roms/vectrex
+cp /path/to/exec_rom.bin ~/.mame/roms/vectrex/
 ```
 
-Useful options:
-
+**Running:**
 ```sh
-mame vectrex -cart build/game.vec -window -nomax
-mame vectrex -cart build/game.vec -debug
+mame vectrex -rompath ~/.mame/roms -cart build/game.vec -window
 ```
+
+**Useful Options:**
+```sh
+mame vectrex -rompath ~/.mame/roms -cart build/game.vec -window -nomax
+mame vectrex -rompath ~/.mame/roms -cart build/game.vec -debug
+```
+
+### OpenEmu
+
+OpenEmu uses libretro cores for Vectrex emulation.
+* Expects `.vec` file extension
+* Same ROM format as MAME
+* No separate BIOS setup required (built into core)
+* If ROM shows Mine Storm instead of your game, the header is invalid
 
 ### ParaJVE / VecX
 
@@ -508,7 +520,7 @@ Display issues:
 
 * Black screen:
 
-  * Is `ColdStart` correctly referenced by reset vector?
+  * Is the ROM header valid? (Must start with `"g GCE YEAR"` string, not just `$67`)
   * Is `Wait_Recal` called in the main loop?
   * Is intensity > 0 before drawing?
 * Off-center or drifting:
@@ -517,6 +529,10 @@ Display issues:
 * Flicker:
 
   * Too many vectors per frame; reduce complexity or split across frames.
+* Shows Mine Storm instead of your game:
+
+  * Header is invalid - emulator falls back to built-in game.
+  * Check copyright string format and terminators.
 
 Logic issues:
 
@@ -530,10 +546,11 @@ Logic issues:
 
 Build issues:
 
-* ROM won’t boot:
+* ROM won't boot:
 
-  * Header or vectors at wrong addresses.
-  * ROM not padded to valid size.
+  * Header format incorrect (see Section 3).
+  * ROM not padded to valid size (4KB, 8KB, 16KB, 32KB).
+  * Using `FILL` directive instead of external padding.
 * Branch out of range:
 
   * Use long branches (`LBRA`, `LBSR`) for distant targets.
