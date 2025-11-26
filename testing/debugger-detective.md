@@ -1,7 +1,7 @@
 ---
 name: debugger-detective
 description: Expert in debugging, root cause analysis, performance profiling, memory leak detection, and distributed tracing
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 
