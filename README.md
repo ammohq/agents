@@ -183,8 +183,8 @@ Python/Django integration specialist for the Bloxs API. Expert in property manag
 Docker, Kubernetes, CI/CD, AWS/GCP/Azure, Terraform, GitHub Actions, monitoring, and production deployment strategies. Handles all DevOps needs.
 
 ### **coolify-specialist** ⭐
-**Coolify self-hosting platform expert with MCP integration, Docker Compose security, and Traefik best practices**
-Manages Coolify PaaS deployments via coolify-mcp-server. Application deployments, database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.), server management, environment configuration, service orchestration, zero-downtime deployments, and resource monitoring. Expert in static site deployments with nginx:alpine containers, Traefik integration, health check patterns, and Let's Encrypt certificate generation. **Critical Docker Compose Knowledge**: Automatically detects and prevents public exposure of internal services by ensuring all services with `build:` directives have `traefik.enable=false` (except the entry point). Prevents Gateway timeout errors by avoiding custom Docker networks and using Coolify Destinations instead. Complete control over self-hosted infrastructure through Coolify API integration with production-safe networking patterns and security best practices.
+**Coolify self-hosting platform expert with MCP integration, Django deployments, Docker Compose security, and Traefik best practices**
+Manages Coolify PaaS deployments via coolify-mcp-server. Application deployments, database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.), server management, environment configuration, service orchestration, zero-downtime deployments, and resource monitoring. **Django + Celery Deployments**: Expert in deploying Django projects with one image, multiple Coolify apps (Web + Celery worker + Celery beat), GHCR integration, build server workflows, and process-aware healthchecks. Expert in static site deployments with nginx:alpine containers, Traefik integration, health check patterns, and Let's Encrypt certificate generation. **Critical Docker Compose Knowledge**: Automatically detects and prevents public exposure of internal services by ensuring all services with `build:` directives have `traefik.enable=false` (except the entry point). Prevents Gateway timeout errors by avoiding custom Docker networks and using Coolify Destinations instead. Complete control over self-hosted infrastructure through Coolify API integration with production-safe networking patterns and security best practices.
 
 ### **security-auditor**
 **Defensive security specialist**
@@ -341,8 +341,8 @@ Chess engine integration and analysis systems:
 - Batch processing and real-time WebSocket streaming
 - Production optimization (threads, hash tables, search depth)
 
-### **Coolify Specialist** (v1.3.0 - Enhanced with Docker Compose Security!)
-Self-hosted PaaS management through coolify-mcp-server with comprehensive Docker Compose security:
+### **Coolify Specialist** (v1.4.0 - Django + Celery Deployment Playbook!)
+Self-hosted PaaS management through coolify-mcp-server with comprehensive Django deployment expertise:
 - Application deployment and lifecycle management
 - Database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.)
 - Server resource monitoring and validation
@@ -350,16 +350,18 @@ Self-hosted PaaS management through coolify-mcp-server with comprehensive Docker
 - Zero-downtime deployment strategies
 - Domain and SSL/TLS configuration
 - Project and team organization
+- **Django + Celery Deployments** (NEW!) - Complete playbook for Web + Worker + Beat as separate Coolify apps
+- **One Image, Multiple Apps** - Single Dockerfile with process-aware entrypoint and healthcheck
+- **GHCR Integration** - GitHub Container Registry setup, PAT configuration, build server workflows
+- **Process-Aware Healthchecks** - Celery containers no longer killed by HTTP healthchecks
+- **Build Server Architecture** - Separate build and runtime servers with image push/pull
 - **Static Site Deployments** - nginx:alpine containers with Traefik integration
 - **Health Check Patterns** - curl-based checks, 127.0.0.1 vs localhost gotchas
 - **Let's Encrypt Automation** - Certificate generation and troubleshooting
-- **7 Critical Gotchas** - Production-tested deployment templates and workflows
 - **Gateway timeout diagnostics and prevention** - Never use custom Docker networks
 - **Coolify Destinations** - Production-safe network isolation patterns
-- **Systematic RCA** - Multi-step root cause analysis for 504 errors
-- **🔒 Docker Compose Security** (NEW!) - Automatic Traefik exposure detection and prevention
+- **Docker Compose Security** - Automatic Traefik exposure detection and prevention
 - **Internal Service Protection** - Proactively adds `traefik.enable=false` to services with `build:` directives
-- **Security Validation** - Pre-deployment checklist to prevent accidental public exposure of backends/databases
 - **Complete Multi-Container Examples** - Production-ready templates with correct security labels
 
 ### **ChatGPT Specialist**
