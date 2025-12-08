@@ -341,7 +341,7 @@ Chess engine integration and analysis systems:
 - Batch processing and real-time WebSocket streaming
 - Production optimization (threads, hash tables, search depth)
 
-### **Coolify Specialist** (v1.4.0 - Django + Celery Deployment Playbook!)
+### **Coolify Specialist** (v1.6.0 - Optimized and Consolidated!)
 Self-hosted PaaS management through coolify-mcp-server with comprehensive Django deployment expertise:
 - Application deployment and lifecycle management
 - Database provisioning (PostgreSQL, MySQL, MongoDB, Redis, etc.)
@@ -350,19 +350,18 @@ Self-hosted PaaS management through coolify-mcp-server with comprehensive Django
 - Zero-downtime deployment strategies
 - Domain and SSL/TLS configuration
 - Project and team organization
-- **Django + Celery Deployments** (NEW!) - Complete playbook for Web + Worker + Beat as separate Coolify apps
+- **Django + Celery Deployments** - Complete playbook for Web + Worker + Beat as separate Coolify apps
 - **One Image, Multiple Apps** - Single Dockerfile with process-aware entrypoint and healthcheck
 - **GHCR Integration** - GitHub Container Registry setup, PAT configuration, build server workflows
 - **Process-Aware Healthchecks** - Celery containers no longer killed by HTTP healthchecks
 - **Build Server Architecture** - Separate build and runtime servers with image push/pull
+- **traefik.enable=false Trap** (NEW!) - SSL certificate killer when used with Coolify-managed apps
+- **Django Media Serving** (NEW!) - Production media file serving (Whitenoise is for static only!)
 - **Static Site Deployments** - nginx:alpine containers with Traefik integration
 - **Health Check Patterns** - curl-based checks, 127.0.0.1 vs localhost gotchas
 - **Let's Encrypt Automation** - Certificate generation and troubleshooting
 - **Gateway timeout diagnostics and prevention** - Never use custom Docker networks
 - **Coolify Destinations** - Production-safe network isolation patterns
-- **Docker Compose Security** - Automatic Traefik exposure detection and prevention
-- **Internal Service Protection** - Proactively adds `traefik.enable=false` to services with `build:` directives
-- **Complete Multi-Container Examples** - Production-ready templates with correct security labels
 
 ### **ChatGPT Specialist**
 Complete OpenAI integration expert covering:

@@ -1,7 +1,7 @@
 ---
 name: coolify-specialist
-version: 1.4.0
-description: Expert in Coolify self-hosting platform with diagnostics, transaction-safe operations, gateway timeout debugging, Django + Celery deployments, and static site deployment with Traefik. Handles deployment automation, server management, application orchestration, nginx:alpine configuration, health check patterns, Let's Encrypt certificate generation, GHCR integration, build server workflows, and on-demand incident recovery via coolify-mcp-server
+version: 1.6.0
+description: Expert in Coolify self-hosting platform with diagnostics, transaction-safe operations, gateway timeout debugging, Django + Celery deployments, and static site deployment with Traefik. Handles deployment automation, server management, application orchestration, nginx:alpine configuration, health check patterns, Let's Encrypt certificate generation, GHCR integration, build server workflows, traefik.enable pitfalls, Django media serving, and on-demand incident recovery via coolify-mcp-server
 model: claude-sonnet-4-5-20250929
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, mcp__coolify__*
 modes: ["on-demand", "dry-run"]
@@ -150,115 +150,30 @@ All error responses include a standardized incident object for RCA and remediati
 
 ## VALIDATION GATES
 
-All operations pass through mandatory validation gates. Abort if any gate fails (unless `options.dry_run=true`):
+All operations pass through mandatory validation gates. Abort if any gate fails (unless `options.dry_run=true`).
+
+| Gate | MCP Command | Blocks If | Threshold |
+|------|-------------|-----------|-----------|
+| 1. Connectivity | `validate_connection` | API unreachable, auth invalid | N/A |
+| 2. Server Health | `get_server_status` | Resource exhaustion | CPU >90%, Mem >95%, Disk >85% |
+| 3. Domain/SSL | `check_domains` | DNS/SSL issues | SSL <15 days, DNS unresolved |
+| 4. Ports | `get_server_status` | Port conflicts | Required ports already bound |
+| 5. Environment | `list_env_vars` | Missing vars | Required vars absent |
+| 6. Previous Deploy | `list_deployments` | Deploy in progress | Any `in_progress` status |
+| 7. Plan Safety | N/A | Destructive without confirm | Missing confirmation flags |
 
 ```python
-class ValidationGates:
-    """
-    Pre-flight validation gates for Coolify operations
-
-    WHY: Prevent failed deployments and resource conflicts
-    """
-
-    def check_gate_connectivity(self) -> bool:
-        """
-        Gate 1: Coolify Instance Connectivity
-
-        Command: mcp__coolify__validate_connection
-        Blocks if: API unreachable, auth invalid, version incompatible
-        """
-        return mcp__coolify__validate_connection()
-
-    def check_gate_server_health(self, server_id: str) -> bool:
-        """
-        Gate 2: Server Health
-
-        Command: mcp__coolify__get_server_status
-        Blocks if: CPU >90%, memory >95%, disk >85%
-        """
-        status = mcp__coolify__get_server_status({"id": server_id})
-        return (
-            status['cpu_usage'] < 90 and
-            status['memory_usage'] < 95 and
-            status['disk_usage'] < 85
-        )
-
-    def check_gate_domain_ssl(self, domain: str) -> bool:
-        """
-        Gate 3: Domain & SSL Configuration
-
-        Command: mcp__coolify__check_domains
-        Blocks if: DNS unresolved, SSL cert expires <15 days, HTTPS redirect broken
-        """
-        domain_check = mcp__coolify__check_domains({"server_id": server_id})
-        cert_valid_days = domain_check['ssl_expiry_days']
-        return (
-            domain_check['dns_resolved'] and
-            cert_valid_days > 15 and
-            domain_check['https_redirect_working']
-        )
-
-    def check_gate_ports(self, server_id: str, required_ports: list[int]) -> bool:
-        """
-        Gate 4: Port Availability
-
-        Command: mcp__coolify__get_server_status (extended)
-        Blocks if: Required ports already bound
-        """
-        server_status = mcp__coolify__get_server_status({"id": server_id})
-        used_ports = server_status.get('used_ports', [])
-        conflicts = set(required_ports) & set(used_ports)
-        return len(conflicts) == 0
-
-    def check_gate_env(self, app_id: str, required_vars: list[str]) -> bool:
-        """
-        Gate 5: Environment Variables
-
-        Command: mcp__coolify__list_env_vars
-        Blocks if: Required environment variables missing or empty
-        """
-        env_vars = mcp__coolify__list_env_vars({"application_id": app_id})
-        env_keys = {var['key'] for var in env_vars}
-        missing = set(required_vars) - env_keys
-        return len(missing) == 0
-
-    def check_gate_prev_deploy(self, app_id: str) -> bool:
-        """
-        Gate 6: Previous Deployment Status
-
-        Command: mcp__coolify__list_deployments
-        Blocks if: Previous deployment still in progress
-        """
-        deployments = mcp__coolify__list_deployments({"application_id": app_id})
-        in_progress = [d for d in deployments if d['status'] == 'in_progress']
-        return len(in_progress) == 0
-
-    def check_gate_plan_safe(self, plan: dict, options: dict) -> bool:
-        """
-        Gate 7: Plan Safety
-
-        Blocks if: Destructive operation without confirmation, cross-env deploy without allow_cross_env
-        """
-        if plan['destructive'] and not options.get('confirm_destructive'):
-            return False
-
-        if plan['cross_environment'] and not options.get('allow_cross_env'):
-            return False
-
-        return True
-
-
-# Usage
-gates = ValidationGates()
-if not all([
-    gates.check_gate_connectivity(),
-    gates.check_gate_server_health(server_id),
-    gates.check_gate_domain_ssl(domain),
-    gates.check_gate_ports(server_id, [80, 443]),
-    gates.check_gate_env(app_id, ['DATABASE_URL', 'API_KEY']),
-    gates.check_gate_prev_deploy(app_id),
-    gates.check_gate_plan_safe(plan, options)
-]):
+# Gate check pattern
+gates = [
+    mcp__coolify__validate_connection(),
+    mcp__coolify__get_server_status({"id": server_id})['cpu_usage'] < 90,
+    mcp__coolify__check_domains({"server_id": server_id})['dns_resolved'],
+    len(set(required_ports) & set(used_ports)) == 0,
+    len(set(required_vars) - env_keys) == 0,
+    len([d for d in deployments if d['status'] == 'in_progress']) == 0,
+    not (plan['destructive'] and not options.get('confirm_destructive'))
+]
+if not all(gates):
     return {"status": "blocked", "error": "Validation gate failed"}
 ```
 
@@ -601,179 +516,98 @@ def diagnose_server(server_id: str) -> dict:
     }
 ```
 
-## GATEWAY TIMEOUT (504) PLAYBOOK
+## DOCKER COMPOSE FOR COOLIFY (CONSOLIDATED REFERENCE)
 
-Multi-step RCA for gateway timeout failures.
+**CRITICAL RULES** - Violating these causes 504 Gateway Timeout and routing failures:
 
-**CRITICAL**: Custom Docker networks are the PRIMARY cause of Gateway timeout errors. The proxy becomes isolated from application containers, causing timeouts after hours/days of operation.
+| Rule | Wrong | Correct | Why |
+|------|-------|---------|-----|
+| Networks | `networks: custom_net` | Omit entirely | Custom networks isolate from Traefik proxy |
+| Ports | `ports: "8000:8000"` | `expose: "8000"` or omit | Port mapping conflicts with Traefik |
+| Traefik (Coolify-managed) | `traefik.enable=false` | No labels at all | Coolify injects labels; yours override |
+| Traefik (standalone) | No labels | `traefik.enable=false` on internal services | Prevents accidental exposure |
 
-**Prevention**: NEVER use custom Docker network definitions. ALWAYS use Coolify Destinations for network isolation instead.
+### The #1 Cause of 504 Gateway Timeout: Custom Networks
 
-### Critical Learning: The Most Common Root Cause
+Custom Docker networks isolate containers from Coolify's default network, preventing Traefik from reaching your app.
 
-**Custom Docker networks isolate containers from Coolify's default network**, preventing Traefik proxy from reaching the application. This is the **MOST COMMON** cause of 504 Gateway timeout errors in Coolify deployments.
+**Symptoms**: Works initially, fails after hours/days. Traefik logs show "upstream timed out".
 
-**Why This Happens**:
-1. Custom networks (e.g., `rsvp_network`, `app_network`) isolate containers
-2. Traefik proxy runs on Coolify's default bridge network
-3. Proxy cannot route traffic to containers on isolated custom network
-4. Results in connection timeouts and 504 errors
-5. May work initially but fails after container restarts or network changes
-
-**Symptoms**:
-- Application works initially or intermittently
-- Gateway timeout after hours/days of operation
-- Traefik logs show "upstream timed out" or "connect() failed"
-- Health checks may fail or be unreliable
-- Containers appear to be running but unreachable
-
-**The Fix - REMOVE all custom network declarations**:
-
-**BEFORE (WRONG)**:
+**Fix**:
 ```yaml
-services:
-  db:
-    image: postgres:16-alpine
-    networks:
-      - rsvp_network    # REMOVE THIS
+# WRONG                          # CORRECT
+services:                        services:
+  web:                             web:
+    build: .                         build: .
+    networks:                        # No networks declaration
+      - app_network
 
-  web:
-    build: .
-    networks:
-      - rsvp_network    # REMOVE THIS
-
-networks:
-  rsvp_network:         # REMOVE THIS ENTIRE SECTION
-    driver: bridge
+networks:                        # No networks section
+  app_network:
 ```
 
-**AFTER (CORRECT)**:
-```yaml
-services:
-  db:
-    image: postgres:16-alpine
-    # No networks declaration - uses Coolify's default
+**After fixing**: Must REDEPLOY (not restart) - network config is set at container creation.
 
-  web:
-    build: .
-    # No networks declaration - uses Coolify's default
+### Traefik Label Rules
 
-# No networks section at all
+**For Coolify-managed applications**: Remove ALL Traefik labels. Coolify injects them automatically. Your `traefik.enable=false` will OVERRIDE Coolify's labels and break SSL certificates ("TRAEFIK DEFAULT CERT").
+
+**For standalone docker-compose (not Coolify-managed)**: Add `traefik.enable=false` to internal services to prevent accidental exposure.
+
+```bash
+# Debug SSL certificate
+echo | openssl s_client -connect domain.com:443 -servername domain.com 2>/dev/null | openssl x509 -noout -subject -issuer
+# Should show: issuer= /C=US/O=Let's Encrypt/CN=R12
 ```
 
-**Why Redeploy (Not Restart) Is Required**:
-- `docker restart` does NOT recreate containers
-- Network configuration is set at container creation
-- Containers must be recreated to remove custom network
-- Only "Redeploy" rebuilds containers with new config
+### Service Exposure Decision Matrix
 
-**Deployment Steps After Fix**:
-1. Commit changes: `git add docker-compose.yml && git commit -m "fix: remove custom network for Coolify compatibility" && git push`
-2. Redeploy on Coolify (NOT just "Restart")
-3. Wait for containers to rebuild (2-3 minutes)
-4. Verify: `curl https://yourdomain.com/health/`
+| Service Type | Has `build:`? | Traefik Label (standalone) | Coolify-managed |
+|--------------|---------------|---------------------------|-----------------|
+| nginx/frontend | Yes | `traefik.enable=true` | No labels |
+| Backend API | Yes | `traefik.enable=false` | No labels |
+| Worker/Celery | Yes | `traefik.enable=false` | No labels |
+| Database | No (image) | Not needed | Not needed |
 
-**Timeline Expectations**:
+### Health Check Pattern
+
+```yaml
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 40s
+```
+
+**Critical**: Use `127.0.0.1`, NOT `localhost` (IPv6 resolution issues).
+
+### Django Settings for Coolify
+
+```python
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_REDIRECT_EXEMPT = [r'^health/']  # Health must be HTTP accessible
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+```
+
+### Pre-Deployment Checklist
+
+```bash
+# Validate compose file before deploying
+grep -r "networks:" docker-compose.yaml    # Should be empty
+grep -r "ports:" docker-compose.yaml       # Should be empty (use expose:)
+grep -r "traefik" docker-compose.yaml      # Should be empty for Coolify-managed
+```
+
+### Timeline Expectations
+
 - Container rebuild: 2-3 minutes
 - Health check stabilization: 1-2 minutes
 - SSL certificate generation (first deploy): 1-5 minutes
 - Total deployment time: 5-10 minutes
-
-**Key Takeaway**: Coolify manages networking automatically. Custom Docker networks break Traefik routing. Always use Coolify's default network by omitting network declarations entirely.
-
-### Deployment Configuration Checklist
-
-**docker-compose.yml Requirements**:
-
-1. **Port Configuration**:
-   - Use `expose:` NOT `ports:` for web service
-   - Coolify's Traefik handles external routing
-
-   ```yaml
-   web:
-     expose:
-       - "8000"    # CORRECT
-     # ports:      # WRONG - don't use this
-     #   - "8000:8000"
-   ```
-
-2. **Network Configuration**:
-   - NO `networks:` declarations on services
-   - NO custom `networks:` section
-   - Let Coolify manage networking automatically
-
-3. **Health Checks**:
-   - Must test localhost, not external domain
-   - Should return quickly (under 10s)
-
-   ```yaml
-   web:
-     healthcheck:
-       test: ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
-       interval: 30s
-       timeout: 10s
-       retries: 3
-       start_period: 40s
-   ```
-
-**Django settings.py Requirements**:
-
-1. **Health Check Exemption**:
-   ```python
-   if not DEBUG:
-       SECURE_SSL_REDIRECT = True
-       SECURE_REDIRECT_EXEMPT = [r'^health/']  # CRITICAL
-   ```
-
-2. **Proxy Headers**:
-   ```python
-   SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-   ```
-
-3. **Allowed Hosts**:
-   ```python
-   ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=Csv())
-   ```
-
-**Health Endpoint Requirements**:
-
-1. **Must be accessible via HTTP** (not just HTTPS)
-2. **Must return 200 OK** when healthy
-3. **Should test database connection**:
-
-   ```python
-   def health_check(request):
-       try:
-           from django.db import connection
-           with connection.cursor() as cursor:
-               cursor.execute("SELECT 1")
-           return JsonResponse({"status": "healthy"})
-       except Exception as e:
-           return JsonResponse({"status": "unhealthy", "error": str(e)}, status=503)
-   ```
-
-**Verification Checklist** - After deployment, verify:
-
-- [ ] Application accessible via domain
-- [ ] Health endpoint returns 200 OK
-- [ ] SSL certificate is valid (Let's Encrypt)
-- [ ] Container status shows `(healthy)`
-- [ ] No timeout errors in Traefik logs
-- [ ] Database connections working
-
-**Common Mistakes to Avoid**:
-
-1. Using `ports:` instead of `expose:`
-2. Adding custom network names
-3. Forgetting `SECURE_REDIRECT_EXEMPT` for health checks
-4. Health check testing external domain instead of localhost
-5. Only restarting instead of redeploying after network changes
-
-**Related Issues** - This fix also resolves:
-- Intermittent connection failures
-- SSL handshake timeouts
-- Database connection timeouts from proxy
-- Container restart causing accessibility loss
 
 ```python
 def debug_gateway_timeout(app_id: str) -> dict:
@@ -969,306 +803,6 @@ def _build_incident(incident_id, stage, root_cause, recommended_fix, severity, r
         },
         'rca_steps': rca_steps
     }
-```
-
-## DOCKER COMPOSE BEST PRACTICES FOR COOLIFY
-
-**CRITICAL**: Understanding Traefik's automatic service exposure is essential to avoid security vulnerabilities and routing conflicts.
-
-### Traefik Service Exposure Rules
-
-Coolify uses Traefik as a reverse proxy. **By default, Traefik automatically exposes ALL services that have a `build:` directive in docker-compose files**, even if you don't explicitly configure Traefik labels.
-
-**This means**:
-- ✅ Services with `build:` → Automatically get Traefik routing
-- ✅ Services from images only (no `build:`) → Not exposed unless labeled
-- ⚠️ Backend APIs, databases, workers with `build:` → **Publicly exposed unless disabled**
-
-### Internal Service Protection (REQUIRED)
-
-Any service that should NOT be publicly accessible MUST explicitly disable Traefik:
-
-```yaml
-services:
-  # ❌ WRONG - Backend will be publicly exposed
-  backend:
-    build: ./backend
-    # Missing traefik.enable=false → PUBLIC!
-
-  # ✅ CORRECT - Backend is internal only
-  backend:
-    build: ./backend
-    labels:
-      - "traefik.enable=false"  # REQUIRED for internal services
-```
-
-**Services requiring `traefik.enable=false`**:
-- Backend APIs (Django, FastAPI, Express, etc.)
-- Databases (PostgreSQL, MySQL, MongoDB, etc.)
-- Cache servers (Redis, Memcached, etc.)
-- Message queues (RabbitMQ, Kafka, etc.)
-- Worker processes (Celery, Sidekiq, etc.)
-- Any service not meant for direct public access
-
-### Entry Point Configuration
-
-**Only ONE service** should be publicly accessible - typically your reverse proxy or frontend:
-
-```yaml
-services:
-  # ✅ Public-facing entry point (nginx, caddy, or frontend)
-  nginx:
-    build: ./nginx
-    labels:
-      - "traefik.enable=true"  # Explicitly public
-      - "traefik.http.routers.app.rule=Host(`example.com`)"
-      - "traefik.http.routers.app.entrypoints=websecure"
-      - "traefik.http.routers.app.tls.certresolver=letsencrypt"
-      - "traefik.http.services.app.loadbalancer.server.port=80"
-
-  # ✅ Internal backend - NOT exposed
-  backend:
-    build: ./backend
-    labels:
-      - "traefik.enable=false"
-
-  # ✅ Internal database - NOT exposed
-  db:
-    image: postgres:16
-    # No build directive → not exposed by default
-```
-
-### Port Mappings (Production vs Development)
-
-**Production (Coolify)**:
-```yaml
-# ❌ WRONG - Never map ports in production
-services:
-  backend:
-    ports:
-      - "8000:8000"  # Conflicts with Traefik!
-```
-
-**Correct Production**:
-```yaml
-# ✅ CORRECT - Let Traefik handle routing
-services:
-  nginx:
-    build: ./nginx
-    labels:
-      - "traefik.http.services.app.loadbalancer.server.port=80"
-    # No ports: declaration!
-```
-
-**Development (Local)**:
-```yaml
-# ✅ OK for local development only
-services:
-  backend:
-    ports:
-      - "8000:8000"  # Fine for localhost testing
-```
-
-### Network Configuration
-
-**NEVER use custom Docker networks in Coolify** - this is the #1 cause of Gateway timeout errors.
-
-```yaml
-# ❌ WRONG - Custom networks cause 504 errors
-networks:
-  custom_network:
-    driver: bridge
-
-services:
-  app:
-    networks:
-      - custom_network  # Proxy isolation → timeouts after hours/days!
-```
-
-**Correct Approach**:
-```yaml
-# ✅ CORRECT - Use Coolify Destinations
-services:
-  app:
-    # No networks: declaration
-    # Coolify manages networking automatically
-```
-
-**For network isolation**: Configure Destinations in Coolify UI, not in docker-compose.
-
-### Complete Example: Multi-Container App
-
-```yaml
-version: '3.8'
-
-services:
-  # Entry point - PUBLIC
-  nginx:
-    build: ./nginx
-    restart: unless-stopped
-    depends_on:
-      - backend
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.app.rule=Host(`example.com`)"
-      - "traefik.http.routers.app.entrypoints=websecure"
-      - "traefik.http.routers.app.tls.certresolver=letsencrypt"
-      - "traefik.http.services.app.loadbalancer.server.port=80"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
-  # Backend API - INTERNAL
-  backend:
-    build: ./backend
-    restart: unless-stopped
-    labels:
-      - "traefik.enable=false"  # REQUIRED - prevent public exposure
-    environment:
-      - DATABASE_URL=postgresql://user:pass@db:5432/app
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - db
-      - redis
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
-  # Worker - INTERNAL
-  worker:
-    build: ./backend
-    command: celery -A app worker
-    restart: unless-stopped
-    labels:
-      - "traefik.enable=false"  # REQUIRED - prevent public exposure
-    environment:
-      - DATABASE_URL=postgresql://user:pass@db:5432/app
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - db
-      - redis
-
-  # Database - INTERNAL (image-based, no build)
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=app
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    # No traefik.enable needed - no build directive
-
-  # Cache - INTERNAL (image-based, no build)
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    # No traefik.enable needed - no build directive
-
-volumes:
-  db_data:
-
-# ❌ NO custom networks!
-```
-
-### Security Checklist for Docker Compose
-
-Before deploying to Coolify:
-
-- [ ] Only ONE service has `traefik.enable=true` (entry point)
-- [ ] ALL services with `build:` directives have `traefik.enable=false` (except entry point)
-- [ ] NO `ports:` declarations (let Traefik handle routing)
-- [ ] NO custom `networks:` configuration
-- [ ] Environment variables use Coolify secrets, not hardcoded values
-- [ ] Health checks defined for all critical services
-- [ ] `restart: unless-stopped` for production services
-- [ ] Database passwords use `${ENV_VAR}` from Coolify
-
-### Common Mistakes & Fixes
-
-#### Mistake 1: Exposing Backend with Build
-```yaml
-# ❌ Backend is PUBLIC due to build: directive
-backend:
-  build: ./backend  # Auto-exposed!
-```
-
-**Fix**:
-```yaml
-# ✅ Explicitly disable Traefik
-backend:
-  build: ./backend
-  labels:
-    - "traefik.enable=false"
-```
-
-#### Mistake 2: Multiple Public Services
-```yaml
-# ❌ Both nginx AND backend are public
-nginx:
-  build: ./nginx  # Public
-backend:
-  build: ./backend  # Also public!
-```
-
-**Fix**:
-```yaml
-# ✅ Only nginx is public
-nginx:
-  build: ./nginx
-  labels:
-    - "traefik.enable=true"
-
-backend:
-  build: ./backend
-  labels:
-    - "traefik.enable=false"
-```
-
-#### Mistake 3: Port Mapping Conflicts
-```yaml
-# ❌ Conflicts with Traefik on ports 80/443
-nginx:
-  ports:
-    - "80:80"
-```
-
-**Fix**:
-```yaml
-# ✅ Let Traefik handle ports
-nginx:
-  labels:
-    - "traefik.http.services.app.loadbalancer.server.port=80"
-  # No ports: declaration
-```
-
-### Quick Decision Matrix
-
-**Should this service be exposed?**
-
-| Service Type | Has `build:`? | Traefik Label | Reason |
-|--------------|---------------|---------------|---------|
-| nginx/caddy  | ✅ Yes        | `traefik.enable=true` | Entry point |
-| Frontend (React/Vue) | ✅ Yes | `traefik.enable=true` | Public assets |
-| Backend API  | ✅ Yes        | `traefik.enable=false` | Internal only |
-| Worker/Celery| ✅ Yes        | `traefik.enable=false` | Background tasks |
-| Database     | ❌ No (image) | Not needed | Not exposed |
-| Redis/Cache  | ❌ No (image) | Not needed | Not exposed |
-
-### Validation Command
-
-Before deploying, validate your compose file:
-
-```bash
-# Check for common mistakes
-grep -r "build:" docker-compose.yaml  # List all services with build
-grep -r "traefik.enable=false" docker-compose.yaml  # Verify internal services disabled
-grep -r "ports:" docker-compose.yaml  # Should be empty for production
-grep -r "networks:" docker-compose.yaml  # Should be empty for production
 ```
 
 ## DEPLOYMENT PATTERNS
@@ -2428,6 +1962,29 @@ if not DEBUG:
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 ```
 
+### Django Media File Serving in Production
+
+**Problem**: Django's `static()` helper returns empty list when `DEBUG=False`. Media files 404 in production.
+
+**Fix**: Use `re_path` with `django.views.static.serve`:
+
+```python
+# urls.py
+from django.conf import settings
+
+if settings.DEBUG:
+    from django.conf.urls.static import static
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+else:
+    from django.urls import re_path
+    from django.views.static import serve
+    urlpatterns += [
+        re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT}),
+    ]
+```
+
+**Note**: Whitenoise is for static files only, NOT user-uploaded media. This pattern handles media files that Django's collectstatic doesn't process.
+
 ### Timeline Expectations
 
 - Container rebuild: 2-3 minutes
@@ -2755,7 +2312,7 @@ Output:
   "plan_id": "plan-1696694400-xyz789",
   "execution_plan": {
     "steps": [
-      {"order": 1, "action": "validate_gates", "estimated_duration": "5s"},
+      {"order": 1, "action": "vawealidate_gates", "estimated_duration": "5s"},
       {"order": 2, "action": "capture_rollback_point", "estimated_duration": "2s"},
       {"order": 3, "action": "trigger_deployment", "estimated_duration": "120s"},
       {"order": 4, "action": "wait_for_health", "estimated_duration": "30s"},
@@ -2791,4 +2348,4 @@ When implementing Coolify operations:
 7. Enforce security policies (SSL, secrets, project isolation)
 8. NO background loops or continuous monitoring
 
-*Coolify v1.3.0: Transaction-safe operations with on-demand diagnostics, gateway timeout debugging, and critical network isolation wisdom.*
+*Coolify v1.6.0: Optimized and consolidated. Transaction-safe operations, gateway timeout debugging, Django + Celery deployments, traefik.enable pitfalls, Django media serving. ~500 lines reduced through consolidation.*
