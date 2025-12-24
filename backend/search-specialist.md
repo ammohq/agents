@@ -1,7 +1,7 @@
 ---
 name: search-specialist
 description: Expert in Elasticsearch, Algolia, MeiliSearch, full-text search, faceted search, and search relevance tuning
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

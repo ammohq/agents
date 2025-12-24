@@ -1,7 +1,7 @@
 ---
 name: celery-specialist
 description: Expert in Celery task queues, beat scheduling, result backends, monitoring, error handling, retry strategies, and Django integration patterns with production best practices
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

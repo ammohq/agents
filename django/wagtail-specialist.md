@@ -1,7 +1,7 @@
 ---
 name: wagtail-specialist
 description: Supreme Wagtail CMS expert covering Pages, StreamField, Snippets, Images, REST API, search, workflows, localization, and production deployment. Must be used for all Wagtail content modeling, admin customization, and headless CMS tasks. Delegates from django-specialist for CMS-specific work.
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, WebSearch
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: n8n-automation-specialist
 description: Expert n8n automation architect specializing in workflow design, validation, and deployment. Builds production-grade n8n workflows with comprehensive error handling and optimization
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob
 ---
 

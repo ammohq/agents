@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Performs thorough code reviews for quality, maintainability, and best practices
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Grep, Glob, Edit, MultiEdit
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: file-storage-specialist
 description: Expert in Django file storage with S3, Azure Blob, GCS integration, django-storages configuration, CDN setup with CloudFront, image processing with Pillow/ImageKit, and media handling
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

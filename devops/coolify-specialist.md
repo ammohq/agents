@@ -2,7 +2,7 @@
 name: coolify-specialist
 version: 1.6.0
 description: Expert in Coolify self-hosting platform with diagnostics, transaction-safe operations, gateway timeout debugging, Django + Celery deployments, and static site deployment with Traefik. Handles deployment automation, server management, application orchestration, nginx:alpine configuration, health check patterns, Let's Encrypt certificate generation, GHCR integration, build server workflows, traefik.enable pitfalls, Django media serving, and on-demand incident recovery via coolify-mcp-server
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, mcp__coolify__*
 modes: ["on-demand", "dry-run"]
 ---

@@ -1,7 +1,7 @@
 ---
 name: performance-analyzer
 description: Identifies bottlenecks and optimizes code for maximum performance and efficiency
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Grep, Glob, Bash, Edit, MultiEdit
 ---
 

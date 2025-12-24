@@ -2,7 +2,7 @@
 name: bloxs-api-specialist
 version: 1.0.0
 description: Senior Python/Django integration engineer for the Bloxs API. Expert in property management data models, authentication patterns, and robust API integrations.
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, WebSearch
 tags: ["api", "integration", "django", "rest", "http", "bloxs", "property-management"]
 capabilities:

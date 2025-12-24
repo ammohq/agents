@@ -1,7 +1,7 @@
 ---
 name: ux-specialist
 description: Expert in UX/UI testing, accessibility, user interaction flows, visual regression testing, and comprehensive GUI testing using Playwright MCP, Puppeteer MCP (if available), Stagehand, and other testing tools
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, mcp__playwright__*, mcp__puppeteer__*
 ---
 

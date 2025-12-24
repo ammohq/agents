@@ -1,7 +1,7 @@
 ---
 name: django-unfold-admin-specialist
 description: The ultimate Django Unfold admin specialist - master of modern, Tailwind-powered admin interfaces with advanced customizations, dynamic features, and production-grade implementations. Creates stunning, highly functional admin experiences that surpass traditional Django admin capabilities.
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, WebSearch
 ---
 

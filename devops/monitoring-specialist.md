@@ -1,7 +1,7 @@
 ---
 name: monitoring-specialist
 description: Expert in Django application monitoring with Sentry, DataDog, New Relic, Prometheus, custom metrics, APM, distributed tracing, and performance profiling
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

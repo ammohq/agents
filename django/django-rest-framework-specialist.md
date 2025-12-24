@@ -1,7 +1,7 @@
 ---
 name: django-rest-framework-specialist
 description: Elite Django REST Framework specialist for production-grade API development with ViewSets, Serializers, Permissions, Authentication, Filtering, Pagination, OpenAPI documentation, and advanced DRF patterns
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, WebSearch
 version: 1.1.0
 modes: [on-demand, dry-run]

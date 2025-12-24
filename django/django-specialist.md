@@ -1,7 +1,7 @@
 ---
 name: django-specialist
 description: Supreme full-stack Django + DRF + ORM + Celery + Channels + Redis + async expert. Must be used for all Django API, backend, async, or data-related tasks. Delivers production-grade, testable, scalable, and optimized systems.
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, WebSearch
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: auth-security-specialist
 description: Expert in OAuth2, JWT, OIDC, MFA, session management, CORS, security headers, and authentication best practices
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

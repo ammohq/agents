@@ -1,7 +1,7 @@
 ---
 name: mobile-developer
 description: Expert in React Native, Flutter, PWAs, mobile optimization, app store deployment, and native integrations
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 ---
 

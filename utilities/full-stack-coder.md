@@ -1,7 +1,7 @@
 ---
 name: full-stack-coder
 description: Implements features across the entire stack - frontend, backend, database, and infrastructure
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, WebSearch
 ---
 

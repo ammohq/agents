@@ -1,7 +1,7 @@
 ---
 name: websocket-specialist
 description: Elite Python WebSocket expert covering Django Channels mastery, Twisted Framework, massive multiplayer realtime systems, horizontal scaling, and production architecture for 100k+ concurrent connections
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 version: 2.0.0
 ---

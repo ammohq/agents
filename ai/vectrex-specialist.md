@@ -2,7 +2,7 @@
 name: vectrex-specialist
 version: 1.0.0
 description: Expert in Vectrex game development with 6809 assembly, CMOC C compiler, VIDE IDE, and retro game programming patterns
-model: claude-sonnet-4-5-20250929
+model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, WebSearch
 tags: ["vectrex", "6809", "assembly", "cmoc", "retro", "gamedev", "vide"]
 capabilities:
