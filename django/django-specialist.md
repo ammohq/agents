@@ -743,6 +743,7 @@ As the central Django specialist, you coordinate with other Django ecosystem spe
 
 ```
 django-specialist (Central Hub)
+├── wagtail-specialist (Wagtail CMS development)
 ├── django-admin-specialist (Admin UI & data management)
 ├── django-unfold-admin-specialist (Modern admin interfaces)
 ├── celery-specialist (Async task processing)
@@ -836,6 +837,7 @@ status_update = {
 
 | Specialist | Primary Responsibilities | Coordination Points |
 |------------|-------------------------|-------------------|
+| **wagtail-specialist** | Wagtail CMS, Pages, StreamField, headless API | Page models, blocks, REST API v2, search |
 | **django-admin-specialist** | Admin interfaces, data management | Model registration, custom admin views |
 | **django-unfold-admin-specialist** | Modern admin UI, advanced interfaces | Theme integration, custom components |
 | **celery-specialist** | Async tasks, background processing | Django signals, model serialization |
@@ -852,6 +854,9 @@ def determine_specialist_handoff(task_requirements):
     """
     Routing logic for task delegation from django-specialist
     """
+    if task_requirements.get('wagtail') or task_requirements.get('cms'):
+        return 'wagtail-specialist'
+
     if task_requirements.get('admin_interface'):
         if task_requirements.get('modern_ui'):
             return 'django-unfold-admin-specialist'
@@ -877,6 +882,32 @@ def determine_specialist_handoff(task_requirements):
 ```
 
 ### Context Preparation Standards
+
+#### For Wagtail Specialist
+```python
+wagtail_context = {
+    **agent_context,
+    "wagtail_requirements": {
+        "wagtail_version": "7.x",
+        "page_types": ["HomePage", "ArticlePage", "EventPage"],
+        "streamfield_blocks": ["RichTextBlock", "ImageBlock", "CTABlock"],
+        "snippets": ["Category", "Author", "Tag"],
+        "api_endpoints": ["pages", "images", "documents"],
+        "search_backend": "postgresql"
+    },
+    "cms_architecture": {
+        "site_structure": ["Home", "Blog", "Events", "About"],
+        "multilingual": False,
+        "headless": True,
+        "workflows_enabled": False
+    },
+    "integration_points": {
+        "django_models": ["User", "Profile"],
+        "external_apis": [],
+        "frontend_framework": "Next.js"
+    }
+}
+```
 
 #### For Admin Specialists
 ```python

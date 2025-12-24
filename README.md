@@ -6,7 +6,7 @@ A comprehensive collection of specialized AI agents for software development, ea
 
 ```
 agents/
-├── django/           # Django framework specialists (7 agents)
+├── django/           # Django framework specialists (8 agents)
 ├── backend/          # Backend infrastructure and services (10 agents)
 ├── frontend/         # Frontend and UI specialists (5 agents)
 ├── ai/               # AI and machine learning specialists (3 agents)
@@ -103,6 +103,10 @@ Comprehensive API design with OpenAPI documentation, versioning, authentication,
 ### **django-rest-framework-specialist** ⭐
 **Elite Django REST Framework specialist**
 Production-grade DRF API development with enterprise ViewSets, advanced serializers, custom permissions, authentication backends, filtering, pagination, OpenAPI documentation with drf-spectacular, testing, performance optimization, and comprehensive error handling. Deep expertise in ModelSerializer patterns, action-level permissions, query optimization, caching, throttling, and API versioning strategies.
+
+### **wagtail-specialist** ⭐
+**Supreme Wagtail CMS expert for content management systems**
+Complete Wagtail CMS mastery covering Pages, StreamField, Snippets, Images, Documents, REST API v2, PostgreSQL search, Workflows, and Wagtail Localize. Expert in page hierarchies, custom block development, SnippetViewSets, image renditions, headless CMS patterns, and production deployment. Delegates from django-specialist for all CMS-specific work. Never uses GraphQL, always PostgreSQL for search.
 
 ### **migration-specialist**
 **Legacy modernization expert**
@@ -212,6 +216,7 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 - **UI/UX issues**: `ux-specialist` (with Stagehand AI) or `frontend-specialist`
 - **Django/API problems**: `django-specialist` or `django-rest-framework-specialist` for DRF-specific issues
 - **DRF serializer/ViewSet issues**: `django-rest-framework-specialist`
+- **Wagtail CMS issues**: `wagtail-specialist` (pages, StreamField, snippets, API)
 - **Admin interface issues**: `django-admin-specialist` or `django-unfold-admin-specialist`
 - **Image processing problems**: `file-storage-specialist` (Pillow integration)
 - **Async task issues**: `celery-specialist`
@@ -229,6 +234,7 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 - **API endpoints**: `django-rest-framework-specialist` for DRF-specific, `django-specialist` for full-stack, or `api-designer` for multi-protocol
 - **Third-party API integrations**: API endpoint specialists (e.g., `bloxs-api-specialist`)
 - **Admin interfaces**: `django-admin-specialist` or `django-unfold-admin-specialist`
+- **Content management systems**: `wagtail-specialist` for Wagtail CMS projects
 - **Image handling**: `file-storage-specialist` with Pillow processing
 - **Background tasks**: `celery-specialist`
 - **Caching strategies**: `redis-specialist`
@@ -260,6 +266,7 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 
 - **`django-specialist`** - Core Django + DRF + ORM + Pillow patterns
 - **`django-rest-framework-specialist`** - Elite DRF API development with ViewSets, serializers, permissions
+- **`wagtail-specialist`** - Wagtail CMS with Pages, StreamField, REST API v2, localization
 - **`django-admin-specialist`** - Advanced admin customization + image management
 - **`django-unfold-admin-specialist`** - Modern Tailwind admin interfaces
 - **`celery-specialist`** - Async task processing + image workflows
@@ -268,6 +275,7 @@ Expert in authoring comprehensive Product Requirement Documents with modern prod
 - **`monitoring-specialist`** - Sentry + Prometheus + structured logging
 
 **Key Features:**
+- 📄 **Wagtail CMS** - Pages, StreamField, Snippets, REST API v2, PostgreSQL search
 - 🖼️ **Full Pillow Integration** - Image processing, optimization, WebP conversion
 - 🎨 **Modern Admin UX** - Django Unfold with Tailwind components
 - ⚡ **Enterprise DRF Patterns** - ViewSets, serializers, permissions, filtering
@@ -383,6 +391,21 @@ The `ux-specialist` now includes Stagehand for AI-powered browser automation:
 - **Drag-and-drop testing** for interactive UI elements using Playwright's `dragTo()` method
 - Comprehensive testing patterns for kanban boards, sortable lists, file uploads, and resizable panels
 
+### **Wagtail Specialist** (New!)
+Supreme Wagtail CMS expert for production-grade content management:
+- Page models with parent/child constraints and content panels
+- StreamField architecture with custom blocks (StructBlock, ListBlock, validation)
+- Snippets and SnippetViewSets with grouped viewsets
+- Image handling (custom models, renditions, responsive images, prefetching)
+- REST API v2 configuration (APIField, custom serializers, ImageRenditionField)
+- PostgreSQL full-text search (SearchField, FilterField, AutocompleteField)
+- Workflows and moderation (custom tasks, approval chains)
+- Wagtail Localize (TranslatableMixin, i18n_patterns, machine translation)
+- Hooks and admin customization (menu items, buttons, CSS/JS injection)
+- Headless CMS patterns for Next.js/React integration
+- Production deployment with caching and performance optimization
+- Delegates from django-specialist for all CMS-specific work
+
 ---
 
-**Remember**: These agents are designed to work together. Complex projects often require multiple specialists coordinated by the orchestrator-agent for optimal results. The orchestrator has full visibility into all 38 agents and can effectively coordinate multi-domain tasks.
+**Remember**: These agents are designed to work together. Complex projects often require multiple specialists coordinated by the orchestrator-agent for optimal results. The orchestrator has full visibility into all 39 agents and can effectively coordinate multi-domain tasks.
