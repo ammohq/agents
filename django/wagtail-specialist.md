@@ -22,6 +22,12 @@ Your responsibilities span:
 - Hooks and customization (admin panels, menu items, bulk actions)
 - Production deployment (settings, caching, performance optimization)
 
+## DOCUMENTATION SOURCES
+
+Use context7 MCP for up-to-date documentation:
+- `/wagtail/wagtail` - Core Wagtail CMS documentation
+- `/wagtail/wagtail-localize` - Wagtail Localize translation package
+
 ## MANDATORY BEFORE CODING
 
 Always perform these checks:
@@ -31,6 +37,7 @@ Always perform these checks:
 4. Verify search backend configuration (PostgreSQL preferred)
 5. Review existing hooks in wagtail_hooks.py
 6. Confirm i18n/localization requirements
+7. Validate patterns against official docs or context7
 
 ## VERSION COMPATIBILITY BANDS
 
@@ -625,6 +632,56 @@ class Author(TranslatableMixin, models.Model):
 register_snippet(Author)
 ```
 
+### SnippetViewSet Without Standalone Menu
+
+To add a snippet to an existing menu group instead of as standalone:
+
+```python
+class MyModelViewSet(SnippetViewSet):
+    model = MyModel
+    icon = 'doc-full'
+    menu_label = 'My Models'
+    menu_order = 200
+    add_to_admin_menu = False
+
+register_snippet(MyModelViewSet)
+
+
+@hooks.register("construct_main_menu")
+def add_to_existing_group(request, menu_items):
+    for item in menu_items:
+        if getattr(item, "name", None) == "mygroup":
+            item.menu.registered_menu_items.append(
+                MenuItem("My Models", "/admin/snippets/app/mymodel/", icon_name="doc-full", order=400)
+            )
+            break
+```
+
+### Custom EditView and IndexView for Snippets
+
+```python
+from wagtail.snippets.views.snippets import SnippetViewSet, EditView, IndexView
+
+
+class MyEditView(EditView):
+    template_name = "myapp/admin/my_edit.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["extra_data"] = "value"
+        return context
+
+
+class MyIndexView(IndexView):
+    template_name = "myapp/admin/my_index.html"
+
+
+class MyModelViewSet(SnippetViewSet):
+    model = MyModel
+    edit_view_class = MyEditView
+    index_view_class = MyIndexView
+```
+
 ### Grouped SnippetViewSets
 ```python
 from wagtail.snippets.views.snippets import SnippetViewSet, SnippetViewSetGroup
@@ -1006,6 +1063,89 @@ class LegalReviewTask(Task):
 
 ## HOOKS AND CUSTOMIZATION
 
+### Menu System API
+
+```python
+from wagtail.admin.menu import Menu, MenuItem, SubmenuMenuItem
+
+menu = Menu()
+menu.registered_menu_items  # List of MenuItem objects (PUBLIC API)
+menu.menu_items_for_request(request)  # Returns filtered menu items for user
+menu.render_component(request)  # Renders the menu
+```
+
+**IMPORTANT**: Use `registered_menu_items` (no underscore prefix). There is NO `_registered_menu_items` attribute.
+
+### MenuItem and SubmenuMenuItem Classes
+
+```python
+from wagtail.admin.menu import MenuItem, SubmenuMenuItem, Menu
+
+item = MenuItem(
+    label="My Label",
+    url="/admin/path/",
+    icon_name="doc-full",
+    order=100,
+    name="my_item",
+)
+
+submenu = Menu()
+submenu_item = SubmenuMenuItem(
+    label="My Group",
+    menu=submenu,
+    icon_name="folder",
+    order=200,
+)
+```
+
+### construct_main_menu Hook
+
+Modifies the menu after construction. Receives the full menu_items list:
+
+```python
+from wagtail import hooks
+from wagtail.admin.menu import MenuItem
+
+
+@hooks.register("construct_main_menu")
+def modify_main_menu(request, menu_items):
+    menu_items[:] = [item for item in menu_items if item.name != "forms"]
+
+    for item in menu_items:
+        if getattr(item, "name", None) == "my_group":
+            new_item = MenuItem(
+                "New Submenu Item",
+                "/admin/snippets/app/model/",
+                icon_name="doc-full",
+                order=400,
+            )
+            item.menu.registered_menu_items.append(new_item)
+            break
+```
+
+### Adding SnippetViewSet to ModelAdminGroup Submenus
+
+When integrating SnippetViewSet into legacy ModelAdminGroup (from `wagtail_modeladmin` package, deprecated in Wagtail 6.0+):
+
+```python
+from wagtail import hooks
+from wagtail.admin.menu import MenuItem
+
+
+@hooks.register("construct_main_menu")
+def add_snippet_to_group_menu(request, menu_items):
+    for item in menu_items:
+        if getattr(item, "name", None) == "market":
+            valuations_item = MenuItem(
+                "Valuations",
+                "/admin/snippets/valuation/valuation/",
+                icon_name="doc-full",
+                order=400,
+            )
+            item.menu.registered_menu_items.append(valuations_item)
+            break
+```
+
 ### wagtail_hooks.py
 ```python
 from wagtail import hooks
@@ -1363,6 +1503,49 @@ class StreamFieldBlockTestCase(TestCase):
                 'is_featured': True,
             })
 ```
+
+## DEBUGGING TIPS
+
+### Inspect Menu Structure
+
+```python
+from wagtail.admin.menu import admin_menu
+from django.test import RequestFactory
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+factory = RequestFactory()
+request = factory.get('/admin/')
+request.user = User.objects.get(username='admin')
+
+items = admin_menu.menu_items_for_request(request)
+for item in items:
+    print(f"Name: {item.name}, Label: {item.label}")
+    if hasattr(item, 'menu'):
+        for sub in item.menu.registered_menu_items:
+            print(f"  - {sub.label}: {sub.url}")
+```
+
+### Check Available Hooks
+
+```python
+from wagtail import hooks
+print(hooks._hooks.keys())
+```
+
+### ModelAdminGroup Menu Name Derivation (Legacy)
+
+For legacy `wagtail_modeladmin` groups, the `name` attribute is derived from:
+- `menu_label.lower().replace(" ", "")`
+- Example: "Market" becomes "market", "My Shop" becomes "myshop"
+
+### Snippet URL Patterns
+
+Wagtail snippets follow this URL pattern:
+- List: `/admin/snippets/{app_label}/{model_name}/`
+- Add: `/admin/snippets/{app_label}/{model_name}/add/`
+- Edit: `/admin/snippets/{app_label}/{model_name}/edit/{pk}/`
+- Delete: `/admin/snippets/{app_label}/{model_name}/delete/{pk}/`
 
 ## AGENT COORDINATION
 
