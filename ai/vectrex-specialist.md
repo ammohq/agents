@@ -1,6 +1,6 @@
 ---
 name: vectrex-specialist
-version: 1.0.0
+version: 1.1.0
 description: Expert in Vectrex game development with 6809 assembly, CMOC C compiler, VIDE IDE, and retro game programming patterns
 model: claude-opus-4-5-20251101
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, WebSearch
@@ -131,6 +131,76 @@ When implementing Vectrex projects, structure your response as:
 16. MUST validate all cartridge ROMs for correct memory layout
 17. ALWAYS use relative branches (BEQ, BNE) within 127 bytes
 18. NEVER assume BIOS scratch RAM is preserved across calls
+19. **Vector draw time is proportional to the SCALE** (the VIA T1 timer value at `$D004`). NEVER default every object to scale `$7F` (= 127 = the MAX/SLOWEST). Use the SMALLEST scale that gives the desired size, compensating with LARGER deltas: **on-screen size ≈ delta × scale**, so big-delta + small-scale = SAME size, far faster. (Vectorblade draws sprites at scale **7**; a comment in its engine says scale 9 was "too slow.")
+20. Call `Reset0Ref` AT MOST ONCE PER FRAME, not per object. Per-object Reset0Ref is pure waste (proven: removing 13/frame changed nothing). Reset once, then position each object with one absolute Moveto.
+21. The cart copyright header is a FIXED 10-char field `"g GCE YYYY"`. MAME's loader requires the literal `g GCE` prefix AND the BIOS reads the music pointer at a FIXED offset right after — a LONGER copyright string shifts it so the cart loads but NEVER launches (symptom: BIOS idles ~50fps, all game RAM stays 0). Keep it exactly 10 chars; put studio branding on the title screen instead.
+22. Prefer ONE vector-list call per shape (`Draw_VL` / a tight custom loop) over one BIOS `Draw_Line_d` per line — but remember the dominant cost is the SCALE (rule 19), not call overhead.
+
+## FAST VECTOR DRAWING — PERFORMANCE (studied from Vectorblade & VectrexThrust)
+
+**The Vectrex has no framebuffer — every object is re-traced by the beam each frame. "Frame rate" = how often the whole scene is redrawn. If a frame's beam-draw work exceeds the ~50Hz budget, the scene re-traces only a few times/second → visible FLICKER. Measure it via `Vec_Loop_Count` ($C825, 16-bit, +1 per `Wait_Recal`): sample over a fixed `emu.wait` window; deltas <~30 are noisy.**
+
+### THE #1 LESSON: SCALE IS THE COST
+A line is drawn by feeding the X/Y DACs (rate, ±127) and running the integrators for a duration set by VIA Timer 1 (the "scale", written to `$D004`). **deflection ≈ DAC × scale; draw_time ≈ scale.** For a fixed on-screen size you can trade: a SMALL scale with a LARGE DAC draws the same size in far less time. A naive game that uses `Moveto_d_7F` everywhere is pinned at scale 127 (slowest). To speed up: lower the scale, scale the shape deltas up by `127/new_scale` to keep size. The one wrinkle — object POSITIONS that span the screen (e.g. ±90) overflow a signed byte at low scale, so do the **positioning Moveto at high scale, then drop the scale and draw the shape** (Vectorblade pattern), or cache absolute screen coords (Thrust pattern).
+
+### VERIFIED BIOS / VIA ADDRESSES (these CORRECT the tables below in this file)
+```
+Wait_Recal   = $F192   Reset0Ref  = $F354   (NOT $F1AF — $F1AF is DP_to_C8!)
+DP_to_D0     = $F1AA   DP_to_C8   = $F1AF
+Moveto_d_7F  = $F2FC   (move to A=Y,B=X AND set scale $7F)
+Draw_Line_d  = $F3DF   Draw_VL    = $F3AD   Dot_d = $F2C3
+Intensity_a  = $F2AB   Intensity_7F = $F2A9
+Print_Str_d  = $F37A   Read_Btns  = $F1BA   Joy_Digital = $F1F8 (SLOW: ADC settling)
+```
+VIA 6522 for direct drawing (set DP=$D0 first, then use direct-page `<$xx`):
+```
+$D000 port B  : mux/blank select      $D001 port A : DAC value (Y or X)
+$D004 T1 low  : THE SCALE              $D005 T1 high: write to START the timer (draw)
+$D00A shiftreg: beam blank ($FF=beam on / $00=off)
+$D00C PCR     : control ($CE for /ZERO-relative move)
+$D00D IFR     : bit $40 = T1 timeout (poll: `bitb <$0D / beq -`)
+```
+
+### TECHNIQUE 1 — Small scale (biggest, cheapest win). Set scale = ONE write:
+```asm
+        LDA     #SCALE      ; e.g. $18 (24) instead of $7F (127) -> ~5x faster draws
+        STA     $D004       ; (extended) or  STA <$04 with DP=$D0
+```
+Scale tiers (Vectorblade): OBJECTS=7, STRINGS=25, BOSSES=50. Pick per object type.
+
+### TECHNIQUE 2 — Custom VIA draw, bypass BIOS (Thrust `Def.asm`). ~15-40% on top of scale:
+```asm
+mSetScale:   STA  <$04                 ; A = scale
+mDrawToD:    ; A=Y delta, B=X delta, draw at current scale
+        STA  <$01    ; Y -> DAC
+        CLR  <$00
+        INC  <$00    ; latch Y, select X
+        STB  <$01    ; X -> DAC
+        LDD  #$FF00
+        STA  <$0A    ; beam ON
+        STB  <$05    ; START T1 (draws for 'scale' ticks)
+        LDA  #$40
+1$      BITA <$0D    ; poll T1 timeout
+        BEQ  1$
+        STB  <$0A    ; beam OFF
+mMove_pen_d_Quick: ; blanked move, no ROM's extra wait (see Def.asm:599)
+```
+Inlined as macros (no JSR/RTS), direct VIA writes (~4-8 cyc) vs BIOS calls (~30-50 cyc).
+
+### TECHNIQUE 3 — Vectorblade "SmartList" (max effort, ~2x over BIOS)
+Pre-compile each shape to a bytecode stream `[Yδ][portB][Xδ][hi func][lo func]` (3-5 B/segment). A driver does `pulu b,x,pc` so each segment **tail-calls the next** — zero outer loop, zero BIOS, scale baked in. See `smartlist/drawListScale7Normal.asm`, `FastABC.asm`. Use when you need dozens of objects at 50fps.
+
+### TECHNIQUE 4 — Reset0Ref once/frame; group draws by intensity/type to minimize beam jumps & intensity changes.
+
+### TECHNIQUE 5 — Cache static geometry (Thrust `RefreshDrawList`): build a flat move+line "drawlist" in RAM ONCE (e.g. on scroll), replay it each frame with one tight loop. Cohen-Sutherland clip (`clip.asm`) only edge objects. Static scenery becomes nearly free.
+
+### CHECKLIST to fix a slow vector renderer (in order of impact)
+1. Are you at scale `$7F` everywhere? → drop the draw scale, scale deltas up. (biggest)
+2. Doing per-frame work that's constant? cache it (e.g. a binary→ASCII score conversion run every frame — only redo it when the value changes).
+3. One BIOS call per line? → switch to `Draw_VL` or an inlined custom loop.
+4. Reset0Ref per object? → once per frame.
+5. Still short? → custom VIA draw (Technique 2), then SmartList (Technique 3).
+**Bisect by stubbing one draw routine at a time and re-measuring `Vec_Loop_Count`; trust only large deltas.**
 
 ## 6809 ASSEMBLY FUNDAMENTALS
 
@@ -491,157 +561,67 @@ This allows direct addressing mode for fast RAM access
 Essential BIOS routines with addresses, parameters, and usage:
 
 ```asm
-; Wait and Display Routines
-$F192   Wait_Recal      ; Wait for frame boundary, reset integrators
-                        ; Call this once per frame (60 Hz sync)
-                        ; Clobbers: A, B, CC
-                        ; WHY: Synchronizes to display and resets beam position
+; === VERIFIED addresses — match the running game's bios.inc + docs/vectrex-bios-calls.md.
+; === Where the repo BIOS doc and working ROMs DISAGREE, the verified WORKING value is used
+; === (these are the ones that actually run correctly in MAME; see notes inline).
 
-$F1AA   DP_to_C8        ; Set direct page to $C8
-                        ; No parameters
-                        ; WHY: Required before using many BIOS routines
+; Frame timing
+$F192   Wait_Recal      ; Wait for frame boundary + recalibrate beam. Call ONCE per frame (60Hz).
 
-$F1AF   Reset0Ref       ; Reset integrators (beam to center)
-                        ; No parameters
-                        ; WHY: Centers beam before drawing
+; Direct page
+$F1AA   DP_to_D0        ; Set DP=$D0 (VIA I/O), returns A=$D0
+$F1AF   DP_to_C8        ; Set DP=$C8 (OS RAM), returns A=$C8
 
-; Intensity and Beam Control
-$F2AB   Intensity_a     ; Set beam intensity from A
-                        ; Input: A = intensity ($00-$7F)
-                        ; $00 = blank (beam off)
-                        ; $7F = maximum brightness
-                        ; WHY: Controls line brightness
+; Beam positioning
+$F354   Reset0Ref       ; Reset integrators, beam to origin. VERIFIED (repo doc's $F2FC is wrong here).
+                        ; Call ONCE per frame, NOT per object (see rule 20).
+$F2FC   Moveto_d_7F     ; Move to (A=Y,B=X) AND set scale $7F. VERIFIED.
+                        ; ($F312 omits the scale-set and breaks multi-object frames)
 
-$F2B5   Intensity_5F    ; Set intensity to $5F (medium bright)
-                        ; No parameters
-                        ; WHY: Good default for most games
+; Intensity
+$F2A5   Intensity_5F    ; medium-bright
+$F2A9   Intensity_7F    ; maximum (VERIFIED, not $F2BC)
+$F2AB   Intensity_a     ; A = intensity ($00 blank .. $7F max)
 
-$F2BC   Intensity_7F    ; Set intensity to $7F (maximum)
-                        ; No parameters
-                        ; WHY: Brightest possible lines
+; Drawing  (on-screen size = delta x scale; LOWER the scale at $D004 to draw faster
+;           — see the FAST VECTOR DRAWING section above; do not default to scale $7F)
+$F3AD   Draw_VL         ; Draw vector list (ptr in X, count = first byte) — one call per shape
+$F3CE   Draw_VL_a       ; Draw A+1 lines from list at X
+$F3B1   Draw_VL_mode    ; Draw vector list, mode byte in $C824
+$F3DF   Draw_Line_d     ; Draw one relative line (A=dY, B=dX). VERIFIED (NOT $F40E)
+$F2C3   Dot_d           ; Draw dot at (A=Y, B=X)
+$F2C7   Dot_ix_b        ; Draw dot from X reg, scale B
+$F2D5   Dot_List        ; Draw dot list (X=ptr, ends $01) — stars/particles
 
-; Vector Drawing
-$F312   Dot_ix_b        ; Draw dot at position in X,Y registers
-                        ; Input: B = relative Y, A = relative X (in X register)
-                        ; WHY: Draw single point (asteroid, bullet, etc.)
+; Text  (terminate strings with $80 / high bit set)
+$F37A   Print_Str_d     ; Print at (A=Y, B=X), ptr in U. VERIFIED (NOT $F495 — $F495 is Print_List)
+$F385   Print_Str       ; Print at current beam position
+$F38A   Print_Str_yx    ; Print at (Y,X)
+$F495   Print_List      ; Print positioned string list
 
-$F35B   Dot_List        ; Draw list of dots
-                        ; Input: X = pointer to dot list
-                        ; Format: Each dot is 2 bytes: Y, X
-                        ;         List ends with $01
-                        ; WHY: Draw stars, particle effects
+; Input
+$F1BA   Read_Btns       ; Read buttons (mask=$FF) -> Vec_Btn_State. VERIFIED (NOT $F1F5)
+$F1B4   Read_Btns_Mask  ; Read buttons with transition mask in A
+$F1F5   Joy_Analog      ; Read joysticks (analog)
+$F1F8   Joy_Digital     ; Read joysticks (digital -1/0/+1). SLOW (ADC settling) — don't over-call.
 
-$F373   Moveto_d        ; Move beam to absolute position
-                        ; Input: A = Y position, B = X position
-                        ; Range: -127 to +127 (center is 0,0)
-                        ; WHY: Position beam before drawing shape
+; Sound  (PSG shadow $C800-$C80D)
+$F272   Clear_Sound     ; Silence all channels (VERIFIED — this is NOT Do_Sound)
+$F289   Do_Sound        ; Per-frame: process music + flush shadow to PSG. VERIFIED.
+$F256   Sound_Byte      ; Write one byte to a PSG register
+$F533   Init_Music      ; Initialize music player (NOT $F284)
+$F68D   Init_Music_chk  ; Init music if flag set (NOT $F27D)
 
-$F389   Draw_VL_mode    ; Draw vector list with mode byte
-                        ; Input: X = pointer to vector list
-                        ;        Y = relative position (Y:A, X:B)
-                        ;        A = scale factor
-                        ;        B = draw mode
-                        ; WHY: Main routine for drawing complex shapes
+; Score helpers
+$F542   Clear_Score     ; Clear 7-byte score at X
+$F550   Add_Score_a     ; Add A to score at X
+$F55A   Add_Score_d     ; Add D to score at X
 
-$F3AD   Draw_VL_a       ; Draw vector list with scale
-                        ; Input: X = pointer to vector list
-                        ;        Y = relative position
-                        ;        A = scale factor
-                        ; Vector list format:
-                        ;   First byte: mode (usually $FF for draw)
-                        ;   Then pairs of: Y offset, X offset
-                        ;   Ends with byte $01
-                        ; WHY: Scale sprites up/down dynamically
+; Boot
+$F000   Start           ; Cold/warm start (BIOS init)
 
-$F3CE   Draw_VL         ; Draw vector list at default scale
-                        ; Input: X = pointer to vector list
-                        ;        Y = relative position
-                        ; WHY: Simplest vector drawing
-
-$F40E   Draw_Line_d     ; Draw line from current position
-                        ; Input: A = Y offset, B = X offset
-                        ; WHY: Draw single line segment
-
-; Text Display
-$F495   Print_Str_d     ; Print string at position
-                        ; Input: X = pointer to string
-                        ;        A = Y position
-                        ;        B = X position
-                        ; String format: ASCII, ends with $80 or high bit set
-                        ; WHY: Display score, messages, title
-
-$F4A2   Print_Str_yx    ; Print string at beam position
-                        ; Input: X = pointer to string
-                        ;        Y = beam position
-                        ; WHY: Print at specific coordinates
-
-$F4B0   Print_List      ; Print multiple strings from list
-                        ; Input: X = pointer to string list
-                        ; WHY: Display menus, multiple lines
-
-$F543   Print_Ships_x   ; Print number with leading spaces
-                        ; Input: A = number to print (0-99)
-                        ;        X = position
-                        ; WHY: Display lives, health
-
-; Sound Generation
-$F272   Do_Sound        ; Play sound effect
-                        ; Input: X = pointer to sound data
-                        ;        B = duration
-                        ; WHY: Sound effects, explosions, etc.
-
-$F27D   Init_Music_chk  ; Initialize music if needed
-                        ; No parameters
-                        ; WHY: Start background music
-
-$F284   Init_Music      ; Force initialize music
-                        ; Input: X = pointer to music data
-                        ; WHY: Start/change music track
-
-$F28C   Do_Sound_x      ; Play sound from table
-                        ; Input: X = pointer to sound data
-                        ; WHY: Complex sound effects
-
-; Input Reading
-$F1F5   Read_Btns       ; Read joystick buttons
-                        ; Output: Button states in $C81B-$C81E
-                        ;         $C81B: Joystick 1 buttons (4 bits)
-                        ;         Bit 0 = button 1, etc.
-                        ; WHY: Detect button presses
-
-$F1F8   Read_Btns_Mask  ; Read buttons with mask
-                        ; Input: A = button mask
-                        ; Output: A = masked button state
-                        ; WHY: Check specific buttons
-
-$F1BA   Joy_Analog      ; Read analog joystick position
-                        ; Output: Joystick 1 X in $C81A (signed)
-                        ;         Joystick 1 Y in $C819 (signed)
-                        ;         Range: -127 to +127
-                        ; WHY: Analog movement control
-
-; Math Routines
-$F603   Random          ; Generate random number
-                        ; Output: A = random byte
-                        ; Uses: Internal random seed
-                        ; WHY: Procedural generation, enemy spawn
-
-$F610   Random_3        ; Random number 0-7
-                        ; Output: A = random 0-7
-                        ; WHY: Direction selection, variations
-
-; Explosion Effects
-$F6E4   Explosion       ; Draw explosion animation
-                        ; Input: $C823 = X position
-                        ;        $C824 = Y position
-                        ;        $C825 = explosion number (0-7)
-                        ; WHY: Death effects, impacts
-
-; Cold Boot
-$F000   Cold_Start      ; BIOS initialization
-                        ; Called automatically on reset
-                        ; Sets up VIA, calibrates DAC, initializes vectors
-                        ; WHY: System startup
+; NOTE: Random / Explosion / any routine NOT listed here — VERIFY against
+;       docs/vectrex-bios-calls.md or the running game's bios.inc before using.
 
 ; Example Usage:
 
@@ -659,7 +639,7 @@ DrawScore:
         LDX     #ScoreText
         LDA     #$50            ; Y position (upper screen)
         LDB     #$60            ; X position (right side)
-        JSR     $F495           ; Print_Str_d
+        JSR     $F37A           ; Print_Str_d
         RTS
 
 ScoreText:
@@ -875,7 +855,7 @@ DrawParticleLoop:
         PSHS    X
         LDD     Particle_X,X
         TFR     D,X             ; X = position
-        JSR     $F312           ; Dot_ix_b
+        JSR     $F2C7           ; Dot_ix_b
         PULS    X
 
 NextParticle:
@@ -923,7 +903,7 @@ DrawScoreText:
         LDX     #ScoreLabel
         LDA     #$50            ; Y position (upper screen)
         LDB     #$60            ; X position (right side)
-        JSR     $F495           ; Print_Str_d
+        JSR     $F37A           ; Print_Str_d
 
         ; Print number
         LDA     Score           ; Get score value
@@ -1082,13 +1062,13 @@ void print_str_d(int y, int x, const char* str) {
         LDX     :str
         LDA     :y
         LDB     :x
-        JSR     $F495       ; Print_Str_d
+        JSR     $F37A       ; Print_Str_d
     }
 }
 
 void enable_sound(void) {
     __asm {
-        JSR     $F27D       ; Init_Music_chk
+        JSR     $F68D       ; Init_Music_chk
     }
 }
 
@@ -1128,7 +1108,7 @@ void print_int(int value) {
 void print_str_yx(const char* str) {
     __asm {
         LDX     :str
-        JSR     $F4A2       ; Print_Str_yx
+        JSR     $F38A       ; Print_Str_yx
     }
 }
 ```
@@ -1384,7 +1364,7 @@ void draw_bullet(int x, int y) {
         LDA     :y
         LDB     :x
         TFR     D,X
-        JSR     $F312       ; Dot_ix_b
+        JSR     $F2C7       ; Dot_ix_b
     }
 }
 
@@ -1915,7 +1895,7 @@ MusicData:
 
 PlayMusic:
         LDX     #MusicData
-        JSR     $F284           ; Init_Music
+        JSR     $F533           ; Init_Music
         RTS
 
 ; Frequency calculations for musical notes
@@ -2173,7 +2153,7 @@ ClearEnemies:
 ; Title screen update
 UpdateTitle:
         ; Read buttons
-        JSR     $F1F5           ; Read_Btns
+        JSR     $F1BA           ; Read_Btns
         LDA     $C81B           ; Button state
         ANDA    #$01            ; Button 1?
         BEQ     TitleDone
@@ -2194,13 +2174,13 @@ DrawTitle:
         LDX     #TitleText
         LDA     #$30            ; Y position
         LDB     #$00            ; X position (centered)
-        JSR     $F495           ; Print_Str_d
+        JSR     $F37A           ; Print_Str_d
 
         ; Draw "press button" text
         LDX     #PressText
         LDA     #-$20
         LDB     #$00
-        JSR     $F495
+        JSR     $F37A
 
         RTS
 
@@ -2577,13 +2557,13 @@ DrawUI:
         LDX     #ScoreLabel
         LDA     #SCREEN_TOP-10
         LDB     #SCREEN_LEFT+10
-        JSR     $F495
+        JSR     $F37A
 
         ; Draw lives
         LDX     #LivesLabel
         LDA     #SCREEN_TOP-10
         LDB     #SCREEN_RIGHT-30
-        JSR     $F495
+        JSR     $F37A
 
         RTS
 
@@ -2598,7 +2578,7 @@ LivesLabel:
 ; Game over screen
 UpdateGameOver:
         ; Wait for button
-        JSR     $F1F5
+        JSR     $F1BA
         LDA     $C81B
         ANDA    #$01
         BEQ     GameOverDone
@@ -2617,7 +2597,7 @@ DrawGameOver:
         LDX     #GameOverText
         LDA     #$00
         LDB     #$00
-        JSR     $F495
+        JSR     $F37A
 
         RTS
 
@@ -2657,7 +2637,7 @@ ReadInput:
         JSR     $F1BA           ; Joy_Analog (BIOS)
 
         ; Read buttons
-        JSR     $F1F5           ; Read_Btns (BIOS)
+        JSR     $F1BA           ; Read_Btns (BIOS)
 
         RTS
 
@@ -2742,7 +2722,7 @@ UpdateButtons:
         STA     PrevButtonState
 
         ; Read current state
-        JSR     $F1F5
+        JSR     $F1BA
         LDA     $C81B
         STA     ButtonState
 
@@ -3025,7 +3005,7 @@ Common Issues and Solutions:
 Display Problems:
 - No display → Check Wait_Recal called, intensity set
 - Flickering graphics → Drawing too many vectors per frame
-- Off-center vectors → Forgot Reset0Ref ($F1AF)
+- Off-center vectors → Forgot Reset0Ref ($F354)
 - Dim lines → Increase intensity value
 - Vectors distorted → Check scale factor, coordinate bounds
 
