@@ -65,7 +65,7 @@ The agent must respect these rules in all code:
 2. Set DP to $C8 before using BIOS routines:
 
    * `LDA #$C8` / `TFR A,DP`
-3. Use `Reset0Ref` ($F1AF) or `Wait_Recal` to recenter beam before drawing.
+3. Use `Reset0Ref` ($F354) or `Wait_Recal` to recenter beam before drawing.
 4. End all vector lists with `$01`.
 5. Terminate all strings for BIOS printing with a byte whose high bit is set (e.g. `$80`, or last char OR $80).
 6. Do not exceed user RAM ($C880–$CBEA) for custom variables.
@@ -179,7 +179,7 @@ MainLoop:
         LDU     #TextHello      ; string pointer in U register
         LDA     #$00            ; Y position
         LDB     #$C0            ; X position
-        JSR     $F37A           ; Print_Str_xy
+        JSR     $F37A           ; Print_Str_d (pointer in U)
 
         JMP     >MainLoop       ; MUST use extended addressing!
 
@@ -194,7 +194,7 @@ TextHello:
 * Music pointer is `$FD0D` directly (NOT a MusicData label)
 * Use `JMP >MainLoop` with `>` prefix to force extended addressing
 * Use `$F354` (Reset0Ref) after Wait_Recal
-* Use `$F37A` (Print_Str_xy) with string pointer in U register
+* Use `$F37A` (Print_Str_d) with string pointer in U register
 
 ---
 
@@ -208,44 +208,44 @@ Addresses are in the $E000–$FFFF BIOS region. These are verified working addre
 $F000  Cold_Start    ; Full BIOS init (called once on boot/reset)
 $F192  Wait_Recal    ; Wait for frame sync + reset integrators (REQUIRED every frame)
 $F354  Reset0Ref     ; Reset beam to center (use after Wait_Recal)
-$F1AA  DP_to_C8      ; Set DP to $C8
+$F1AA  DP_to_D0      ; Set DP to $D0 (VIA I/O)
+$F1AF  DP_to_C8      ; Set DP to $C8 (OS RAM)
 ```
 
 ### Intensity & Vector Drawing
 
 ```text
 $F2AB  Intensity_a   ; A = intensity (0–$7F)
-$F2B5  Intensity_5F  ; Medium intensity
-$F2BC  Intensity_7F  ; Max intensity
+$F2A5  Intensity_5F  ; Medium intensity
+$F2A9  Intensity_7F  ; Max intensity
 
-$F312  Moveto_d_7F   ; Move beam, A=Y, B=X
-$F40E  Draw_Line_d   ; Draw line, A=Y delta, B=X delta
+$F2FC  Moveto_d_7F   ; Move beam A=Y, B=X AND set scale $7F
+$F3DF  Draw_Line_d   ; Draw line, A=Y delta, B=X delta
 $F2C3  Dot_d         ; Draw dot at A,B position
 
-$F3CE  Draw_VL       ; X=list, Y=position, default scale
-$F3AD  Draw_VL_a     ; X=list, Y=position, A=scale
-$F389  Draw_VL_mode  ; X=list, Y=position, A=scale, B=mode
-$F35B  Dot_List      ; X=dot list (pairs), $01 terminator
+$F3AD  Draw_VL       ; X=list, count=first byte, draws at current scale
+$F3CE  Draw_VL_a     ; Draw A+1 lines from list at X
+$F3B1  Draw_VL_mode  ; Draw vector list, mode byte in $C824
+$F2D5  Dot_List      ; X=dot list (pairs), $01 terminator
 ```
 
 ### Text
 
 ```text
-$F37A  Print_Str_xy  ; U=string pointer, A=Y, B=X (PREFERRED)
-$F495  Print_Str_d   ; A=Y, B=X, X=string
-$F4A2  Print_Str_yx  ; X=string, Y=position
-$F4B0  Print_List    ; X=list of string pointers
-$F543  Print_Ships_x ; A=number, X=position (formatted)
+$F37A  Print_Str_d   ; A=Y, B=X, U=string pointer (PREFERRED)
+$F385  Print_Str     ; print at current beam position, U=pointer
+$F495  Print_List    ; X=list of positioned string pointers
 ```
 
-**Note**: `Print_Str_xy` ($F37A) uses the U register for the string pointer, not X.
+**Note**: `Print_Str_d` ($F37A) takes the string pointer in the U register, not X.
 
 ### Input
 
 ```text
-$F1F5  Read_Btns     ; Updates button states at $C81B-$C81E
-$F1F8  Read_Btns_Mask; A=mask in, A=masked result out
-$F1BA  Joy_Analog    ; Reads analog joystick, results in $C819/$C81A
+$F1BA  Read_Btns     ; Updates Vec_Btn_State / button bytes $C81B-$C81E
+$F1B4  Read_Btns_Mask; A=mask in, A=masked result out
+$F1F5  Joy_Analog    ; Reads analog joystick, results in $C819/$C81A
+$F1F8  Joy_Digital   ; Digital -1/0/+1 (SLOW: ADC settling)
 ```
 
 Typical BIOS joystick variables (after Joy_Analog):
@@ -266,10 +266,11 @@ $F610  Random_3      ; A = random 0–7
 ### Sound/Music (High-level)
 
 ```text
-$F272  Do_Sound      ; X=pointer to sound data, B=duration
-$F27D  Init_Music_chk; Initialize music if not already
-$F284  Init_Music    ; X=pointer to music data
-$F28C  Do_Sound_x    ; X=pointer to sound data
+$F289  Do_Sound      ; Per-frame: process music + flush sound shadow to PSG
+$F272  Clear_Sound   ; Silence all channels
+$F256  Sound_Byte    ; Write one value to a PSG register
+$F533  Init_Music    ; X=pointer to music data
+$F68D  Init_Music_chk; Initialize music if flag set
 ```
 
 ---
@@ -363,8 +364,8 @@ Adjust emulator path and options as needed.
 
 ```asm
 ReadInput:
-        JSR     $F1BA           ; Joy_Analog
-        JSR     $F1F5           ; Read_Btns
+        JSR     $F1F5           ; Joy_Analog
+        JSR     $F1BA           ; Read_Btns
 
         ; After this:
         ; $C819 = Y, $C81A = X, $C81B = buttons
